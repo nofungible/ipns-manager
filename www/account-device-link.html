@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="format-detection" content="telephone=no">
+        <meta name="msapplication-tap-highlight" content="no">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="/style.css">
+        <title>web3 Content Routing</title>
+    </head>
+    <body>
+        <div id="header">
+            <p><span>🌐</span>ipns://</p>
+            <table>
+                <tbody>
+                    <td>
+                        <span class="button">DONATE</span>
+                    </td>
+                    <td>
+                        <a class="button" href="/about">ABOUT</a>
+                    </td>
+                    <td>
+                        <a class="button" href="/manage">SIGN_IN</a>
+                    </td>
+                </tbody>
+            </table>
+            <div style="height: 1px; background-color: red;"></div>
+            <div style="height: 1px; background-color: orange;"></div>
+            <div style="height: 1px; background-color: yellow;"></div>
+            <div style="height: 1px; background-color: blue;"></div>
+            <div style="height: .5px; background-color: purple;"></div>
+        </div>
+        <div id="content">
+            <h1>Link Device</h1>
+            <p>
+                Use the form below to sign in and manage web3 content addresses from your current device.
+            </p>
+            <br>
+           <div class="sign-in-container">
+            <p>
+                Provide your account password to link the device you're viewing this page on.
+            </p>
+            <br>
+            <div>
+                <p class="label">Password</p>
+                <input id="device-link-pw" class="input" type="password" placeholder="password"><span class="password-reveal">👁️</span></div>
+            <br>
+            <div id="device-link-success" class="hidden">
+                <p class="tooltip">
+                    Your device is linked!
+                    <br><br>
+                    You can now manage your IPNS content addresses from your current device.
+                    <br><br>
+                    Use the link below to navigate to your management dashboard.
+                </p>
+
+                <a class="button" href="/manage">ACCOUNT_DASHBOARD</a>
+            </div>
+            <div id="device-link-submit">
+                <span class="button action-controller" data-action="link-device">LINK_DEVICE</span>
+            </div>
+           </div>
+        </div>
+        <script type="text/javascript" src="/auth.js"></script>
+    </body>
+</html>

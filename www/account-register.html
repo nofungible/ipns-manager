@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="format-detection" content="telephone=no">
+        <meta name="msapplication-tap-highlight" content="no">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="/style.css">
+        <title>web3 Content Routing</title>
+    </head>
+    <body>
+        <div id="header">
+            <p><span>🌐</span>ipns://</p>
+            <table>
+                <tbody>
+                    <td>
+                        <span class="button">DONATE</span>
+                    </td>
+                    <td>
+                        <a class="button" href="/about">ABOUT</a>
+                    </td>
+                    <td>
+                        <a class="button" href="/manage">SIGN_IN</a>
+                    </td>
+                </tbody>
+            </table>
+            <div style="height: 1px; background-color: red;"></div>
+            <div style="height: 1px; background-color: orange;"></div>
+            <div style="height: 1px; background-color: yellow;"></div>
+            <div style="height: 1px; background-color: blue;"></div>
+            <div style="height: .5px; background-color: purple;"></div>
+        </div>
+        <div id="content">
+            <h1>Account Creation</h1>
+            <p>
+                Use the form below to create a new account and grant access to your current device.
+                <br><br>
+                Already have an account?
+                <br>
+                Use the link below to recover access on this device.
+                <br>
+                <a href="/account/recover">Recover Account</a>
+            </p>
+            <br>
+           <div class="sign-in-container">
+            <h2>Register New Account</h2>
+            <br>
+            <p>
+                Provide your new account password and tap 'CREATE_ACCOUNT' to register.
+                <br><br>
+                Once your account is registered you will be given your SECRET KEY!
+                <br><br>
+                Store this in a safe place in case you need to
+                recover access to your account.
+            </p>
+            <br>
+            <p class="label">New Account Password</p>
+            <div id="new-account-password-input"><input class="input" type="password" placeholder="password"><span class="password-reveal">👁️</span></div>
+            <br>
+            <div id="secret-key-container" class="hidden">
+                <div id="new-secret-key" class="url"></div>
+                <span class="interactive action-controller" data-action="copy-target-text" data-target="#new-secret-key" style="margin-left: 5px; vertical-align: middle;">📋</span>
+                <p class="tooltip">
+                    ☝️ This is your SECRET KEY!
+                    <br><br>
+                    Keep it in a secure place, and do not lose it!
+                    <br><br>
+                    This key will be required when recovering access to your account, or to reset your password.
+                    <br><br>
+                    Use the button below to navigate to your new account dashboard, and get started routing content!
+                </p>
+            </div>
+            <span id="account-create-submit" class="button action-controller" data-action="create-account">CREATE_ACCOUNT</span>
+            <a id="account-create-successful" class="button hidden" href="/manage">ACCOUNT_DASHBOARD</a>
+           </div>
+        </div>
+        <script src="/auth.js"></script>
+    </body>
+</html>

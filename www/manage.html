@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="format-detection" content="telephone=no">
+        <meta name="msapplication-tap-highlight" content="no">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="/style.css">
+        <title>web3 Content Routing</title>
+    </head>
+    <body>
+        <div id="header">
+            <p><span>🌐</span>ipns://</p>
+            <table>
+                <tbody>
+                    <td>
+                        <span class="button">DONATE</span>
+                    </td>
+                    <td>
+                        <a class="button" href="/about">ABOUT</a>
+                    </td>
+                    <td>
+                        <a class="button" href="/sign-out">SIGN_OUT</a>
+                    </td>
+                </tbody>
+            </table>
+            <div style="height: 1px; background-color: red;"></div>
+            <div style="height: 1px; background-color: orange;"></div>
+            <div style="height: 1px; background-color: yellow;"></div>
+            <div style="height: 1px; background-color: blue;"></div>
+            <div style="height: .5px; background-color: purple;"></div>
+        </div>
+        <div id="content">
+            <h1>IPNS Routing Management</h1>
+            <p id="new-ipns-key-tooltip" class="tooltip">
+                <span data-target="#new-ipns-key-tooltip" class="close-icon interactive action-controller" data-action="hide-element">X</span>
+                 Provide an alias for your new IPNS key; this is usually a blockchain domain, or a descriptive string.<br><br>Tap the '+' button to generate and store your key.<br><br>Attach your content's IPFS CID to your key and 'DEPLOY' it to the IPFS network.
+            </p>
+            <div id="status-key">
+                <table>
+                    <tbody>
+                        <td>
+                            <span class="address-status"></span><span>No Content CID</span>
+                        </td>
+                        <td>
+                            <span class="address-status status-deploying"></span><span>Deploying to IPFS</span>
+                        </td>
+                        <td>
+                            <span class="address-status status-deployed"></span><span>Deployed</span>
+                        </td>
+                        <td>
+                            <span class="address-status status-error"></span><span>Deploy Failed</span>
+                        </td>
+                    </tbody>
+                </table>
+            </div>
+            <div id="address-mapping-container">
+                <div style="border-bottom: dashed 1px #262626; padding: 10px 0px;">
+                    <p class="label">Create IPNS Address</p>
+                    <input id="new-key-alias" type="text" placeholder="new address alias">
+                    <span class="button action-controller" data-action="create-record">+</span>
+                </div>
+                <div id="address-table" class="hidden">
+                </div>
+                <table id="no-address-message">
+                    <tbody>
+                        <td>
+                            You don't have any IPNS addresses yet!
+                            <br><br>
+                            Create one with the input above. 
+                        </td>
+                    </tbody>
+                </table>
+            </div>
+            <br><br>
+            <h1>Access Management</h1>
+            <div class="sign-in-container">
+                <h2>Password Reset</h2>
+                <br>
+                <p>Use the button below to navigate to a new page where you can reset your account password.</p>
+                <br>
+                <a class="button" href="/account/password/reset">RESET_PASSWORD</a>
+            </div>
+
+            <div class="sign-in-container">
+                <h2>Link New Device</h2>
+                <br>
+                <p>
+                    Generate a new device link URL which can be opened on another device to grant access to your account.
+                    <br><br>
+                    These URLs will become invalid after a short time as a security precaution.
+                </p>
+                <br>
+                <p id="link-device-url" class="url"></p><span id="copy-link-device-url" class="interactive action-controller" data-action="copy-target-text" data-target="#link-device-url" style="margin-left: 5px; vertical-align: middle;">📋</span>
+                <br>
+                <br>
+                <span class="button action-controller" data-action="create-link-url">GENERATE_URL</span>
+            </div>
+            <div class="sign-in-container">
+                <h2>API Keys</h2>
+                <br>
+                <p>
+                    Generate API keys that can be utilized by other applications.
+                    <br><br>
+                    This allows applications to create and manage IPNS records for the purposes of saving configurations, or updating content.
+                    <br><br>
+                    You can define specific actions each token can perform as well as an originating URL to restrict access to.
+                </p>
+                <br>
+                <p class="label">API Key Alias</p>
+                <input id="new-api-key-alias" class="input" type="text" placeholder="key alias">
+                <br><br>
+                <p class="label">Origin URL (Optional)</p>
+                <input id="new-api-key-url-csv" class="input" type="text" placeholder="origin URL">
+                <br><br>
+                <p class="label">Permissions</p>
+                <select id="new-api-key-permissions" class="interactive">
+                    <option value="NONE">Select Permission</option>
+                    <option value="READ">READ</option>
+                    <option value="WRITE">WRITE</option>
+                    <option value="READ,WRITE">READ + WRITE</option>
+                    <option value="READ,WRITE,SELF_ONLY">SELF ONLY</option>
+                </select>
+                <br><br><br>
+                <span class="button action-controller" data-action="create-api-key">CREATE_KEY</span>
+                <br><br>
+                <div id="api-key-table">
+                    <div id="no-api-keys-message" class="api-key-item">
+                        <h2>No API Keys</h2>
+                        <br>
+                        <p>You don't have any API keys yet!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script src="/manage.js"></script>
+    </body>
+</html>
