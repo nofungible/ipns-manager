@@ -75,28 +75,6 @@
             <br><br>
             <h1>Access Management</h1>
             <div class="sign-in-container">
-                <h2>Password Reset</h2>
-                <br>
-                <p>Use the button below to navigate to a new page where you can reset your account password.</p>
-                <br>
-                <a class="button" href="/account/password/reset">RESET_PASSWORD</a>
-            </div>
-
-            <div class="sign-in-container">
-                <h2>Link New Device</h2>
-                <br>
-                <p>
-                    Generate a new device link URL which can be opened on another device to grant access to your account.
-                    <br><br>
-                    These URLs will become invalid after a short time as a security precaution.
-                </p>
-                <br>
-                <p id="link-device-url" class="url"></p><span id="copy-link-device-url" class="interactive action-controller" data-action="copy-target-text" data-target="#link-device-url" style="margin-left: 5px; vertical-align: middle;">📋</span>
-                <br>
-                <br>
-                <span class="button action-controller" data-action="create-link-url">GENERATE_URL</span>
-            </div>
-            <div class="sign-in-container">
                 <h2>API Keys</h2>
                 <br>
                 <p>
@@ -132,7 +110,26 @@
                     </div>
                 </div>
             </div>
+
+            <div class="sign-in-container">
+                <h2>Change Password</h2>
+                <br>
+                <p>Use the button below to navigate to a new page where you can reset your account password.</p>
+                <br>
+                <a class="button" href="/account/password/reset">CHANGE_PASSWORD</a>
+            </div>
         </div>
+            <!--
+        Site Footer Push
+        Invisible element used to push the content above where the absolutely positioned sticky footer visually rests.
+        Must be the same height as footer + box sizing.
+    -->
+    <div id="footer-push"></div>
+
+    <!-- Site Footer -->
+    <div id="footer">
+        <p>Provided/Maintained by <a href="https://twitter.com/noFungibleNFT">@noFungibleNFT</a></p>
+    </div>
         <script src="/manage.js"></script>
     </body>
 </html>

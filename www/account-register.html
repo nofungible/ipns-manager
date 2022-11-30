@@ -31,33 +31,60 @@
             <div style="height: .5px; background-color: purple;"></div>
         </div>
         <div id="content">
-            <h1>Account Creation</h1>
+            <h1>Account Sign In</h1>
             <p>
-                Use the form below to create a new account and grant access to your current device.
+                Sync your Tezos wallet to provide access to your current device:
                 <br><br>
-                Already have an account?
-                <br>
-                Use the link below to recover access on this device.
-                <br>
-                <a href="/account/recover">Recover Account</a>
+                <span id="account-sign-in-submit" class="button action-controller" data-action="link-device">SIGN_IN</span>
             </p>
             <br>
            <div class="sign-in-container">
-            <h2>Register New Account</h2>
-            <br>
-            <p>
-                Provide your new account password and tap 'CREATE_ACCOUNT' to register.
+            <div id="register-account-container">
+                <h2>Register New Account</h2>
+                <br>
+                <p>
+                    Creating a new account is simple!
+                    <br><br>
+                    Get started by using the button below to sync your Tezos wallet.
+                    <br><br>
+                    This web3 identity will be used to quickly connect other devices, and to verify additional features/upgrades.
+                </p>
+                <br>
+                <span id="account-register-submit" class="button action-controller" data-action="register-account">REGISTER_ACCOUNT</span>
+            </div>
+            <div id="create-account-container" class="hidden">
+                <h2>Next Step: Secure Your New Account</h2>
+                <br>
+                <p>
+                    Great! Your account will be linked to:
+                    <br>
+                    <span id="tezos-address"></span>
+                    <br><br>
+                    Let's secure your new account with a unique password that only YOU know.
+                    <br><br>
+                    Store this in a safe place!
+                </p>
+                <br>
+                <p class="label">New Account Password</p>
+                <div id="new-account-password-input"><input class="input" type="password" placeholder="password"><span class="password-reveal">👁️</span></div>
+                <br>
+                <span style="font-size: 90%; font-style: italic;">**Use the DISCONNECT_WALLET button if this isn't the account you want**</span>
                 <br><br>
-                Once your account is registered you will be given your SECRET KEY!
-                <br><br>
-                Store this in a safe place in case you need to
-                recover access to your account.
-            </p>
-            <br>
-            <p class="label">New Account Password</p>
-            <div id="new-account-password-input"><input class="input" type="password" placeholder="password"><span class="password-reveal">👁️</span></div>
-            <br>
+                <span id="account-create-submit" class="button action-controller" data-action="create-account">CREATE_ACCOUNT</span>
+                <span id="account-unsync-submit" class="button action-controller" data-action="unlink-account">DISCONNECT_WALLET</span>
+            </div>
             <div id="secret-key-container" class="hidden">
+                <h2>Success: Account Created!</h2>
+                <br>
+                <p>
+                    You've successfully created and registered your account!
+                    <br><br>
+                    The recovery key below can be provided along with your account password to manually recover your account.
+                    <br><br>
+                    This can be helpful in the event that you lose access to your Tezos wallet.
+                    <br><br>
+                    Store your secret key in a safe place!
+                </p>
                 <div id="new-secret-key" class="url"></div>
                 <span class="interactive action-controller" data-action="copy-target-text" data-target="#new-secret-key" style="margin-left: 5px; vertical-align: middle;">📋</span>
                 <p class="tooltip">
@@ -69,11 +96,36 @@
                     <br><br>
                     Use the button below to navigate to your new account dashboard, and get started routing content!
                 </p>
+                <a id="account-create-successful" class="button" href="/manage">ACCOUNT_DASHBOARD</a>
             </div>
-            <span id="account-create-submit" class="button action-controller" data-action="create-account">CREATE_ACCOUNT</span>
-            <a id="account-create-successful" class="button hidden" href="/manage">ACCOUNT_DASHBOARD</a>
+           </div>
+
+           <div class="sign-in-container">
+            <div id="register-account-container">
+                <h2>Recover Account</h2>
+                <br>
+                <p>
+                    Tap the button below if you've lost access to your wallet, or you need to manually log in to your account.
+                </p>
+                <br>
+                <a class="button action-controller" href="/account/recover">RECOVER_ACCOUNT</a>
+            </div>
            </div>
         </div>
+            <!--
+                Site Footer Push
+                Invisible element used to push the content above where the absolutely positioned sticky footer visually rests.
+                Must be the same height as footer + box sizing.
+            -->
+    <div id="footer-push"></div>
+
+    <!-- Site Footer -->
+    <div id="footer">
+        <p>Provided/Maintained by <a href="https://twitter.com/noFungibleNFT">@noFungibleNFT</a></p>
+    </div>
+        <script src="/polyfill.js"></script>
+        <script src="/taquito-utils.umd.js"></script>
+        <script src="/beacon-sdk.min.js"></script>
         <script src="/auth.js"></script>
     </body>
 </html>

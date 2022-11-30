@@ -1,10 +1,31 @@
 (function () {
+    const wallet = new beacon.DAppClient({
+        name: 'ipns.nofungible.cloud',
+        eventHandlers: {
+            ACTIVE_ACCOUNT_SET: {
+                handler: async function (activeBeaconAccount) {
+                    try {
+                        console.log('Beacon Wallet Account Set:', activeBeaconAccount);
+                    } catch (err) {
+                        console.error(err);
+                    }
+                }
+            }
+        }
+    });
+
     const authHandlers = {
         'copy-target-text': copyTargetText,
+        'register-account': submitRegisterAccount,
         'create-account': submitCreateAccount,
         'reset-password': submitResetPassword,
         'link-device': submitLinkDevice,
-        'recover-account': submitRecoverAccount
+        'recover-account': submitRecoverAccount,
+        'unlink-account': () => {
+            unsyncWallet(wallet);
+            document.querySelector('#register-account-container').classList.remove('hidden');
+            document.querySelector('#create-account-container').classList.add('hidden');
+        }
     };
 
     attachGestureHandlers();
@@ -47,17 +68,92 @@
         return response.json();
     }
 
+    async function syncWalletCb(cb) {
+        if (!wallet) {
+            throw new Error('NO_WALLET');
+        }
+
+        await new Promise(async (resolve, reject) => {
+            try {
+                const activeAccount = await wallet.getActiveAccount();
+
+                if (!activeAccount) {
+                    await syncWallet(wallet);
+                }
+
+                resolve();
+            } catch (err) {
+                reject(err);
+                unsyncWallet(wallet).catch(console.error);
+            }
+        });
+
+        await cb(wallet);
+    }
+
+    function syncWallet(wallet) {
+        return wallet.requestPermissions();
+    }
+
+    function unsyncWallet(wallet) {
+        return wallet.removeAllAccounts();
+    }
+
+    function submitRegisterAccount() {
+        syncWalletCb(async (wallet) => {
+            const activeAccount = await wallet.getActiveAccount();
+
+            document.querySelector('#tezos-address').innerText = activeAccount.address;
+
+            document.querySelector('#register-account-container').classList.add('hidden');
+            document.querySelector('#create-account-container').classList.remove('hidden');
+        }).catch(console.error); 
+    }
+
     async function submitCreateAccount() {
         const pw = document.querySelector('#new-account-password-input .input').value;
 
-        if (pw) {
-            const {id} = await request('POST', '/api/account/create', {pw});
+        if (pw && wallet) {
+            const activeAccount = await wallet.getActiveAccount();
+
+            if (!activeAccount) {
+                return false;
+            }
+
+            const dappUrl = 'ipns.nofungible.cloud';
+            const ISO8601formatedTimestamp = new Date().toISOString();
+            const input = `Account Registration: ${activeAccount.address}`;
+    
+            const formattedInput = [
+                'Tezos Signed Message:',
+                dappUrl,
+                ISO8601formatedTimestamp,
+                input,
+            ].join(' ');
+    
+            const bytes = window.taquitoUtils.char2Bytes(formattedInput);
+            const payloadBytes = '05' + '0100' + window.taquitoUtils.char2Bytes(`${bytes.length}`) + bytes;
+            const {signature} = await wallet.requestSignPayload({
+                signingType: beacon.SigningType.MICHELINE,
+                payload: payloadBytes,
+            });
+
+            if (!signature) {
+                return false;
+            }
+
+            const {id} = await request('POST', '/api/account/create', {pw, message: payloadBytes, signature, address: activeAccount.address, pubkey: activeAccount.publicKey});
+
+            if (!id) {
+                return false;
+            }
 
             document.querySelector('#secret-key-container .url').innerText = id;
 
             document.querySelector('#secret-key-container').classList.remove('hidden');
             document.querySelector('#account-create-submit').classList.add('hidden');
             document.querySelector('#account-create-successful').classList.remove('hidden');
+            document.querySelector('#create-account-container').classList.add('hidden');
         }
     }
 
@@ -80,16 +176,41 @@
     }
 
     async function submitLinkDevice() {
-        const token = location.href.split('?key=')[1];
-        const pwInput = document.querySelector('#device-link-pw');
-        const pw = pwInput.value;
-        const {success} = await request('put', '/api/account/device/link', {pw, token});
+        syncWalletCb(async (wallet) => {
+            const activeAccount = await wallet.getActiveAccount();
 
-        if (success === true) {
-            pwInput.value = '';
-            document.querySelector('#device-link-success').classList.remove('hidden');
-            document.querySelector('#device-link-submit').classList.add('hidden');
-        }
+            if (!activeAccount) {
+                return false;
+            }
+
+            const dappUrl = 'ipns.nofungible.cloud';
+            const ISO8601formatedTimestamp = new Date().toISOString();
+            const input = `Account Authentication: ${activeAccount.address}`;
+    
+            const formattedInput = [
+                'Tezos Signed Message:',
+                dappUrl,
+                ISO8601formatedTimestamp,
+                input,
+            ].join(' ');
+    
+            const bytes = window.taquitoUtils.char2Bytes(formattedInput);
+            const payloadBytes = '05' + '0100' + window.taquitoUtils.char2Bytes(`${bytes.length}`) + bytes;
+            const {signature} = await wallet.requestSignPayload({
+                signingType: beacon.SigningType.MICHELINE,
+                payload: payloadBytes,
+            });
+    
+            if (!signature) {
+                return false;
+            }
+    
+            const {success} = await request('put', '/api/account/device/link', {message: payloadBytes, signature, address: activeAccount.address, pubkey: activeAccount.publicKey});
+    
+            if (success) {
+                window.location.href = `${location.protocol}//${location.host}/manage`;
+            }
+        }).catch(console.error);
     }
 
     async function submitResetPassword() {

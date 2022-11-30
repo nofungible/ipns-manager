@@ -1,14 +1,16 @@
 {
-  "name": "ipns",
+  "name": "ipns-manager",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "prestart": "./node_modules/.bin/browserify ./polyfill/polyfill.js -o ./www/polyfill.js",
     "start": "node index.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@taquito/taquito": "^14.1.0",
     "axios": "^1.1.3",
     "bcrypt": "^5.1.0",
     "cookie-parser": "^1.4.6",
@@ -25,5 +27,5 @@
     "url": "https://github.com/mikesizz/gg/issues"
   },
   "homepage": "https://github.com/mikesizz/gg#readme",
-  "description": ""
+  "description": "manage ipns records"
 }

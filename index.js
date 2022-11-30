@@ -16,6 +16,7 @@ const DB_FILE = `${__dirname}/address_map.json`;
 const KEY_FILE = `${__dirname}/server_key.json`;
 const COOKIE_NAME = 'NO_FUNGIBLE_DNS_SESSION';
 
+const {getPkhfromPk, verifySignature} = require('@taquito/utils');
 const fs = require('fs');
 const {v4: uuid} = require('uuid');
 
@@ -52,6 +53,8 @@ const db = require(DB_FILE);
 const app = express();
 const state = {linkKeyMap: {}};
 
+db.__account = db.__account || {};
+
 let cacheDbTimeout;
 
 app.use(express.static(`${__dirname}/www`));
@@ -61,39 +64,61 @@ app.use(noCacheHeaders);
 // Unauthenticated Routes
 
 app.post('/api/account/create', verifyPw, _async(async (req, res) => {
-    const {pw} = req.body;
+    const {pw, message, pubkey, address, signature} = req.body;
+
+    if (!verifySignature(message, pubkey, signature)) {
+        console.error('Invalid signature');
+
+        return res.send({success: false});
+    }
+
+    if (getPkhfromPk(pubkey) !== address) {
+        console.error('Address mismatch');
+
+        return res.send({success: false});
+    }
+
+    if (db.__account[address]) {
+        console.error('Account exists');
+
+        return res.send({success: false});
+    }
+
     const hash = await promisify(bcrypt.hash)(pw, 10);
-    const accountId = uuid();
+    const recordId = uuid();
 
-    db.__record[accountId] = {id: accountId, hash, keyMap: {}, apiKeyMap: {}};
+    db.__account[address] = {id: address, record: recordId, createdAt: Date.now()};
+    db.__record[recordId] = {id: recordId, hash, keyMap: {}, apiKeyMap: {}, account: address};
 
-    const authToken = await generateAuthToken(accountId);
+    const authToken = await generateAuthToken(recordId);
 
     res.cookie(COOKIE_NAME, authToken, {maxAge: 5 * 365 * 24 * 60 * 60 * 1000, httpOnly: true});
 
-    return res.send({id: accountId});
+    return res.send({id: recordId});
 }));
 
-app.put('/api/account/device/link', verifyPw, _async(async (req, res) => {
-    if (!req.body.token) {
+app.put('/api/account/device/link', _async(async (req, res) => {
+    const {message, pubkey, address, signature} = req.body;
+
+    if (!verifySignature(message, pubkey, signature)) {
+        console.error('Invalid signature');
+
         return res.send({success: false});
     }
 
-    const {account, session} = {} = await validateDeviceLinkSession(req.body.token);
+    if (getPkhfromPk(pubkey) !== address) {
+        console.error('Address mismatch');
 
-    if (!account) {
         return res.send({success: false});
     }
 
-    const valid = await promisify(bcrypt.compare)(req.body.pw, account.hash);
+    if (!db.__account[address]) {
+        console.error('Account does not exist');
 
-    if (!valid) {
         return res.send({success: false});
     }
 
-    delete state.linkKeyMap[session.linkKey];
-
-    const authToken = await generateAuthToken(account.id);
+    const authToken = await generateAuthToken(db.__account[address].record);
 
     res.cookie(COOKIE_NAME, authToken, {maxAge: 5 * 365 * 24 * 60 * 60 * 1000, httpOnly: true});
 
@@ -156,18 +181,6 @@ app.get('/account/password/reset', (req, res) => {
     res.sendFile(`${__dirname}/www/account-password-reset.html`);
 });
 
-app.get('/account/device/link', _async(async (req, res, next) => {
-    const valid = await validateDeviceLinkSession(req.query.key);
-
-    if (!valid) {
-        return res.redirect('/error');
-    }
-
-    return next();
-}), (req, res) => {
-    res.sendFile(`${__dirname}/www/account-device-link.html`);
-});
-
 app.get('/about', (req, res) => {
     res.sendFile(`${__dirname}/www/about.html`);
 });
@@ -194,6 +207,8 @@ app.use(_async(async (req, res, next) => {
     const verify = await promisify(jwt.verify)(req.cookies[COOKIE_NAME], SERVER_KEY);
 
     if (!verify || !verify.id) {
+        console.error('bad jwt');
+
         return res.redirect('/error');
     }
 
@@ -201,18 +216,24 @@ app.use(_async(async (req, res, next) => {
     const session = db.__session[sessionId];
 
     if (!session) {
+        console.error('no session');
+
         return res.redirect('/error');
     }
 
-    const account = db.__record[session.id];
+    const account = db.__record[session.account];
 
     if (!account) {
+        console.error('no account');
+
         return res.redirect('/error');
     }
 
     const hash = hashSessionId(sessionId, account.hash);
 
     if (hash !== session.hash) {
+        console.error('session hash mismatch');
+
         return res.redirect('/error');
     }
 
@@ -225,6 +246,10 @@ app.post('/api/record', cors(), _async(verifyToken), _async(async (req, res) => 
     const {alias} = req.body;
 
     if (!alias) {
+        return res.send({success: false});
+    }
+
+    if (Object.keys(db.__record[req.session.id].keyMap).length > 10) {
         return res.send({success: false});
     }
 
@@ -247,7 +272,7 @@ app.post('/api/record', cors(), _async(verifyToken), _async(async (req, res) => 
         metadata: {}
     };
 
-    return res.send({id, alias, ipfs: {key}});
+    return res.send(db.__record[req.session.id].keyMap[id]);
 }));
 
 app.patch('/api/record/:id', cors(), _async(verifyToken), _async(async (req, res) => {
@@ -283,7 +308,12 @@ app.delete('/api/record/:id', cors(), _async(verifyToken), _async(async (req, re
         return res.send({success: false});
     }
 
+    //
     await deleteIPFSKey(record.id);
+
+    if (record.cid) {
+        promisify(exec)(`ipfs pin rm ${record.cid}`).catch(console.error);
+    }
 
     db.removedElements = db.removedElements || [];
 
@@ -400,7 +430,7 @@ app.put('/api/record/:id', cors(), _async(verifyToken), _async(async (req, res) 
         }
     })();
 
-    return res.send({success: true, cid});
+    return res.send(Object.assign({}, db.__record[req.session.id].keyMap[req.params.id], {cid}));
 }));
 
 app.use((req, res, next) => {
@@ -499,16 +529,6 @@ app.post('/api/account/password/reset', _async(async (req, res, next) => {
     res.send({success: true});
 }));
 
-app.post('/api/account/device/link', _async(async (req, res) => {
-    const linkKey = createLinkKey(req.session.id);
-    const linkToken = await promisify(jwt.sign)({
-        i: linkKey,
-        c: Date.now()
-    }, LINK_KEY);
-
-    return res.send({key: linkToken});
-}));
-
 cacheDb();
 
 app.listen(3031);
@@ -541,7 +561,7 @@ function cacheDb() {
 async function generateAuthToken(accountId) {
     const sessionId = createAccountSession(accountId);
 
-    return promisify(jwt.sign)({id: sessionId}, SERVER_KEY);
+    return promisify(jwt.sign)({id: sessionId, iat: Date.now()}, SERVER_KEY);
 }
 
 async function generateIPFSKey(name) {
@@ -714,7 +734,7 @@ function createAccountSession(accountId) {
     const sessionId = uuid();
     const sessionHash = hashSessionId(sessionId, db.__record[accountId].hash);
 
-    db.__session[sessionId] = {hash: sessionHash, createdAt: Date.now(), id: accountId};
+    db.__session[sessionId] = {id: sessionId, hash: sessionHash, createdAt: Date.now(), account: accountId};
 
     return sessionId;
 }
