@@ -1,7 +1,6 @@
 (() => {
     const actionHandlers = {
         'create-api-key': createAPIKey,
-        'create-link-url': submitCreateLinkDevice,
         'copy-target-text': copyTargetText,
         'create-record': createIPNSRecord,
         'hide-element': hideElement,
@@ -77,16 +76,6 @@
         }
     }
 
-    async function submitCreateLinkDevice() {
-        document.querySelector('#copy-link-device-url').innerText = '📋';
-        document.querySelector('#link-device-url').innerText = '';
-
-        const {key} = await request('POST', '/api/account/device/link');
-        const url = `${location.protocol}//${location.host}/account/device/link?key=${key}`;
-
-        document.querySelector('#link-device-url').innerText = url;
-    }
-
     async function request(method, path, body) {
         const response = await fetch(
             `${location.protocol}//${location.host}${path}`,
@@ -123,12 +112,12 @@
                         </div>
                         <p class="address-line">
                             <span class="address-label">IPNS:</span>
-                            <span id="ipns-hash-${r.id}" class="address">${r.ipfs.key ? r.ipfs.key : ''}</span>
+                            <span id="ipns-hash-${r.id}" class="address">${r.key ? r.key : ''}</span>
                             <span class="interactive action-controller" data-action="copy-target-text" data-target="#ipns-hash-${r.id}" style="margin-left: 5px; vertical-align: middle;">📋</span>
                         </p>
                         <p class="address-line">
                             <span class="address-label">CID:</span>
-                            <span id="ipns-cid-${r.id}" class="address">${r.ipfs.cid ? r.ipfs.cid : ''}</span>
+                            <span id="ipns-cid-${r.id}" class="address">${r.cid ? r.cid : ''}</span>
                             <span class="interactive action-controller" data-action="copy-target-text" data-target="#ipns-cid-${r.id}" style="margin-left: 5px; vertical-align: middle;">📋</span>
                         </p>
                         <p class="button deploy-record" data-target="#cid-input-${r.id}" data-id="${r.id}">DEPLOY</p>
@@ -320,9 +309,9 @@
                         </p>
                     </div>
                     <p class="label">Allowed URLs</p>
-                    <p class="origin-list">${t.urlSet.join(', ')}</p>
+                    <p class="origin-list">${t.urlCsv ? t.urlCsv.split(',').join(', ') : ''}</p>
                     <p class="label">Permissions</p>
-                    <div class="permission-list">${t.permissionSet.join(' - ')}</div>
+                    <div class="permission-list">${t.permissionCsv.split(',').join(' - ')}</div>
                     <br><br>
                     <span class="button action-controller" data-action="delete-api-key" data-target="${t.id}">DELETE_KEY</span>
                 </div>`;
@@ -340,8 +329,8 @@
     }
 
     async function createAPIKey() {
-        const alias = document.querySelector('#new-api-key-alias').value;
-        const urlCsv = document.querySelector('#new-api-key-url-csv').value;
+        const alias = document.querySelector('#new-api-key-alias').value.trim();
+        const urlCsv = document.querySelector('#new-api-key-url-csv').value.trim();
         const permissionCsv = document.querySelector('#new-api-key-permissions').value;
         const validPermCsvSet = [
             'READ',
@@ -362,8 +351,8 @@
 
         const {token, id} = {} = await request('POST', '/api/account/token', {
             alias,
-            permissionSet: permissionCsv.split(',').map((s) => s.trim()),
-            urlSet: urlCsv ? urlCsv.split(',').map((s) => s.trim()) : null
+            permissionCsv,
+            urlCsv: urlCsv ? urlCsv.split(',').map((s) => s.trim()).join(',') : null
         });
 
         if (!token) {

@@ -68,7 +68,7 @@
         return response.json();
     }
 
-    async function syncWalletCb(cb) {
+    async function syncWalletCb(cb, force = false) {
         if (!wallet) {
             throw new Error('NO_WALLET');
         }
@@ -77,7 +77,7 @@
             try {
                 const activeAccount = await wallet.getActiveAccount();
 
-                if (!activeAccount) {
+                if (!activeAccount || force === true) {
                     await syncWallet(wallet);
                 }
 
@@ -107,7 +107,7 @@
 
             document.querySelector('#register-account-container').classList.add('hidden');
             document.querySelector('#create-account-container').classList.remove('hidden');
-        }).catch(console.error); 
+        }, true).catch(console.error); 
     }
 
     async function submitCreateAccount() {
@@ -142,13 +142,13 @@
                 return false;
             }
 
-            const {id} = await request('POST', '/api/account/create', {pw, message: payloadBytes, signature, address: activeAccount.address, pubkey: activeAccount.publicKey});
+            const {key} = await request('POST', '/api/account/create', {pw, message: payloadBytes, signature, address: activeAccount.address, pubkey: activeAccount.publicKey});
 
-            if (!id) {
+            if (!key) {
                 return false;
             }
 
-            document.querySelector('#secret-key-container .url').innerText = id;
+            document.querySelector('#secret-key-container .url').innerText = key;
 
             document.querySelector('#secret-key-container').classList.remove('hidden');
             document.querySelector('#account-create-submit').classList.add('hidden');
@@ -162,7 +162,7 @@
         const key = document.querySelector('#secret-key-input').value;
 
         if (pw && key) {
-            const {success} = await request('POST', '/api/account/recover', {pw, id: key});
+            const {success} = await request('POST', '/api/account/recover', {pw, key: key});
 
             if (success === true) {
                 document.querySelector('#recover-account-success').classList.remove('hidden');
@@ -228,7 +228,7 @@
         pw1El.value = '';
         pw2El.value = '';
 
-        const {success} = await request('POST', '/api/account/password/reset', {id, pw0, pw1, pw2});
+        const {success} = await request('POST', '/api/account/password/reset', {key: id, pw0, pw1, pw2});
 
         if (success === true) {
             document.querySelector('#pw-reset-success').classList.remove('hidden');

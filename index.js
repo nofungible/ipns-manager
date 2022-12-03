@@ -1,32 +1,15 @@
 'use strict';
 
-/**
- * @TODO hash password on client side with random salt sent by the server. calculate on return to ensure client hash. once this is verified by the server create a bcrypt hash of the client hash.
- * @TODO never show the secret key (user id) create a map of session key > secret key signed by the user's current password hash.
- * this allows them to have secure access w/o exposing the user id(secret key) via the JWT payload. This also alolows the user to
- * be able to invalidate device sessions by resetting their password and by revoking a specific session key from the map.
- * 
- * @TODO hash password on the client side before sending it to the backend
- * @TODO maybe don't use the password on the account link page. have some kind of code that you get when you generate the device link url.
- * @TODO make device link URLs short lived
- * @TODO Sticky footer w/ donation message, donation page
- */
+require('dotenv').config()
 
-const DB_FILE = `${__dirname}/address_map.json`;
+const {Account, AccessToken, Cookie, Record} = require('./src/models');
+
 const KEY_FILE = `${__dirname}/server_key.json`;
 const COOKIE_NAME = 'NO_FUNGIBLE_DNS_SESSION';
 
-const {getPkhfromPk, verifySignature} = require('@taquito/utils');
 const fs = require('fs');
 const {v4: uuid} = require('uuid');
-
-try {
-    fs.writeFileSync(DB_FILE, JSON.stringify({__salt: uuid(), __session: {}, __record: {}}), { flag: 'wx' });
-} catch (err) {
-    if (err.code !== 'EEXIST') {
-        throw err;
-    }
-}
+const {getPkhfromPk, verifySignature} = require('@taquito/utils');
 
 try {
     fs.writeFileSync(KEY_FILE, JSON.stringify({key: uuid(), apiKey: uuid()}), { flag: 'wx' });
@@ -37,7 +20,6 @@ try {
 }
 
 const {key: SERVER_KEY, apiKey: SERVER_API_KEY} = require(KEY_FILE);
-const LINK_KEY = uuid();
 
 const axios = require('axios');
 const bcrypt = require('bcrypt');
@@ -49,19 +31,16 @@ const {exec} = require('child_process');
 const {promisify} = require('util');
 const {createHmac} = require('crypto');
 
-const db = require(DB_FILE);
 const app = express();
-const state = {linkKeyMap: {}};
 
-db.__account = db.__account || {};
-
-let cacheDbTimeout;
-
-app.use(express.static(`${__dirname}/www`));
+app.use(express.static(`${process.cwd()}/www`));
 app.use(express.json());
 app.use(cookieParser());
 app.use(noCacheHeaders);
-// Unauthenticated Routes
+
+/**
+ * Unauthenticated Routes
+ */
 
 app.post('/api/account/create', verifyPw, _async(async (req, res) => {
     const {pw, message, pubkey, address, signature} = req.body;
@@ -78,25 +57,29 @@ app.post('/api/account/create', verifyPw, _async(async (req, res) => {
         return res.send({success: false});
     }
 
-    if (db.__account[address]) {
+    const hash = await promisify(bcrypt.hash)(pw, 10);
+    const [account, created] = await Account.findOrCreate({
+        where: {walletAddress: address},
+        defaults: {
+            hash,
+            walletAddress: address
+        }
+    });
+
+    if (!created) {
         console.error('Account exists');
 
         return res.send({success: false});
     }
 
-    const hash = await promisify(bcrypt.hash)(pw, 10);
-    const recordId = uuid();
+    const cookie = await createAccountCookie(account);
 
-    db.__account[address] = {id: address, record: recordId, createdAt: Date.now()};
-    db.__record[recordId] = {id: recordId, hash, keyMap: {}, apiKeyMap: {}, account: address};
+    res.cookie(COOKIE_NAME, cookie, {maxAge: 5 * 365 * 24 * 60 * 60 * 1000, httpOnly: true});
 
-    const authToken = await generateAuthToken(recordId);
-
-    res.cookie(COOKIE_NAME, authToken, {maxAge: 5 * 365 * 24 * 60 * 60 * 1000, httpOnly: true});
-
-    return res.send({id: recordId});
+    return res.send({key: account.secretKey});
 }));
 
+// @TODO store device info
 app.put('/api/account/device/link', _async(async (req, res) => {
     const {message, pubkey, address, signature} = req.body;
 
@@ -112,27 +95,29 @@ app.put('/api/account/device/link', _async(async (req, res) => {
         return res.send({success: false});
     }
 
-    if (!db.__account[address]) {
+    const account = await Account.findOne({where: {walletAddress: address}});
+
+    if (!account) {
         console.error('Account does not exist');
 
         return res.send({success: false});
     }
 
-    const authToken = await generateAuthToken(db.__account[address].record);
+    const cookie = await createAccountCookie(account);
 
-    res.cookie(COOKIE_NAME, authToken, {maxAge: 5 * 365 * 24 * 60 * 60 * 1000, httpOnly: true});
+    res.cookie(COOKIE_NAME, cookie, {maxAge: 5 * 365 * 24 * 60 * 60 * 1000, httpOnly: true});
 
     return res.send({success: true});
 }));
 
 app.post('/api/account/recover', _async(async (req, res, next) => {
-    const id = req.body.id;
+    const key = req.body.key;
 
-    if (!id) {
+    if (!key) {
         return res.send({success: false});
     }
 
-    const account = db.__record[id];
+    const account = await Account.findOne({where: {secretKey: key}});
 
     if (!account) {
         return res.send({success: false});
@@ -144,12 +129,18 @@ app.post('/api/account/recover', _async(async (req, res, next) => {
         return res.send({success: false});
     }
 
-    const authToken = await generateAuthToken(account.id);
+    const cookie = await createAccountCookie(account);
 
-    res.cookie(COOKIE_NAME, authToken, {maxAge: 5 * 365 * 24 * 60 * 60 * 1000, httpOnly: true});
+    res.cookie(COOKIE_NAME, cookie, {maxAge: 5 * 365 * 24 * 60 * 60 * 1000, httpOnly: true});
 
     return res.send({success: true});
 }));
+
+app.use((err, req, res, next) => {
+    console.error('Request failure:', err);
+
+    return res.send({success: false});
+});
 
 app.get('/', (req, res) => {
     if (req.cookies[COOKIE_NAME]) {
@@ -212,16 +203,16 @@ app.use(_async(async (req, res, next) => {
         return res.redirect('/error');
     }
 
-    const sessionId = verify.id;
-    const session = db.__session[sessionId];
+    const cookieId = verify.id;
 
-    if (!session) {
-        console.error('no session');
-
-        return res.redirect('/error');
-    }
-
-    const account = db.__record[session.account];
+    const {
+        Account: account,
+        hash: cookieHash
+    } = await Cookie.findByPk(cookieId, {
+        include: {
+            model: Account
+        }
+    });
 
     if (!account) {
         console.error('no account');
@@ -229,9 +220,7 @@ app.use(_async(async (req, res, next) => {
         return res.redirect('/error');
     }
 
-    const hash = hashSessionId(sessionId, account.hash);
-
-    if (hash !== session.hash) {
+    if (hashText(cookieId, account.hash) !== cookieHash) {
         console.error('session hash mismatch');
 
         return res.redirect('/error');
@@ -249,189 +238,190 @@ app.post('/api/record', cors(), _async(verifyToken), _async(async (req, res) => 
         return res.send({success: false});
     }
 
-    if (Object.keys(db.__record[req.session.id].keyMap).length > 10) {
+    const recordCount = await Record.count({where: {account: req.session.id}});
+
+    if (recordCount > 5) {
         return res.send({success: false});
     }
 
-    const createdAt = Date.now();
     const id = uuid();
-    const key = await generateIPFSKey(id);
-
-    db.__record[req.session.id].keyMap[id] = {
-        id,
-        alias,
-        ipfs: {
-            key,
-            cid: null,
-        },
-        cid: null,
-        status: 0,
-        createdAt,
-        updatedAt: createdAt,
-        creator: req.session.identifier || null,
-        metadata: {}
-    };
-
-    return res.send(db.__record[req.session.id].keyMap[id]);
-}));
-
-app.patch('/api/record/:id', cors(), _async(verifyToken), _async(async (req, res) => {
-    const record = db.__record[req.session.id].keyMap[req.params.id];
-
-    if (!record) {
-        return res.send({success: false});
-    }
-
-    const {alias, metadata} = req.body;
-
-    if (!alias && !metadata) {
-        return res.send({success: false});
-    }
-
-    if (alias) {
-        record.alias = alias;
-    }
-
-    if (metadata && typeof metadata === 'object' && !Array.isArray(metadata)) {
-        record.metadata = metadata;
-    }
-
-    record.updatedAt = Date.now();
+    const record = await Record.create(
+        Object.assign({
+            id,
+            key: await generateIPFSKey(id),
+            account: req.session.id,
+            alias
+        }, req.session.identifier ? {token: req.session.identifier} : {})
+    );
 
     return res.send(record);
 }));
 
-app.delete('/api/record/:id', cors(), _async(verifyToken), _async(async (req, res) => {
-    const record = db.__record[req.session.id].keyMap[req.params.id];
-
-    if (!record) {
-        return res.send({success: false});
-    }
-
-    //
-    await deleteIPFSKey(record.id);
-
-    if (record.cid) {
-        promisify(exec)(`ipfs pin rm ${record.cid}`).catch(console.error);
-    }
-
-    db.removedElements = db.removedElements || [];
-
-    db.removedElements.push(db.__record[req.session.id].keyMap[req.params.id]);
-
-    delete db.__record[req.session.id].keyMap[req.params.id];
-
-    return res.send(record);
-}));
-
-app.get('/api/record/list', cors(), _async(verifyToken), _async((req, res) => {
-    let records = Object.values(db.__record[req.session.id].keyMap);
-
-    if (req.session.validateIdentifier) {
-        records = records.filter((r) => {
-            return r.creator && r.creator === req.session.identifier;
-        });
-    }
+app.get('/api/record/list', cors(), _async(verifyToken), _async(async (req, res) => {
+    const records = await Record.findAll({
+        where: Object.assign(
+            {account: req.session.id}
+            , req.session.identifier ? {token: req.session.identifier} : {}
+        )
+    });
 
     return res.send(records);
 }));
 
-app.get('/api/record/:id', cors(), _async(verifyToken), function (req, res) {
-    const record = db.__record[req.session.id].keyMap[req.params.id];
+// PATCH is not an allowed action with API tokens, so we don't need to verify record ownership.
+app.patch('/api/record/:id', _async(verifyToken), _async(async (req, res) => {
+    const {alias} = req.body;
 
-    if (req.session.validateIdentifier && (!record.creator || record.creator !== req.session.identifier)) {
-        return res.send(null);
-    }
-
-    return res.send(record);
-});
-
-app.put('/api/record/:id', cors(), _async(verifyToken), _async(async (req, res) => {
-    let {cid, json} = req.body;
-
-    if (!cid && !json) {
+    if (!alias) {
         return res.send({success: false});
     }
 
+    const record = await Record.findOne({
+        where: {
+            id: req.params.id,
+            account: req.session.id
+        }
+    });
+
+    if (!record) {
+        return res.send({success: false});
+    }
+
+    record.alias = alias;
+
+    await record.save();
+
+    return res.send(Object.assign({}, record.toJSON(), {alias}));
+}));
+
+app.delete('/api/record/:id', cors(), _async(verifyToken), _async(fetchVerifiedRecord), _async(async (req, res) => {
+    const {
+        key,
+        cid,
+        json
+    } = req.verifiedRecord;
+
+    await deleteIPFSKey(key);
+
     if (json) {
-        if (Buffer.byteLength(json, 'utf8') > 10000000) {
-            return res.send({success: false, error: 'JSON size exceeded'});
-        }
-
         try {
-            json = JSON.parse(json);
+            await promisify(exec)(`ipfs pin rm ${cid}`);
         } catch (err) {
-            console.error('Failed to parse JSON');
-
-            return res.send({success: false, error: 'JSON invalid'})
+            console.error('Failed to remove DELETE record pin', err);
         }
     }
 
-    if (req.session.validateIdentifier) {
-        const record = db.__record[req.session.id].keyMap[req.params.id];
+    // @TODO retain records some way
+    await req.verifiedRecord.destroy();
 
-        if (!record.creator || record.creator !== req.session.identifier) {
-            return res.send({success: false, error: 'Invalid permissions'});
-        }
-    }
+    return res.send(req.verifiedRecord);
+}));
 
-    const fileKey = `${__dirname}/CID_TEMP_${Date.now()}.json`;
+app.get('/api/record/:id', cors(), _async(verifyToken), _async(fetchVerifiedRecord), function (req, res) {
+    return res.send(req.verifiedRecord);
+});
 
-    if (json) {
-        await promisify(exec)(`touch ${fileKey}`);
-        await promisify(fs.writeFile)(fileKey, JSON.stringify(json));         
+app.put(
+    '/api/record/:id',
+    cors(),
+    _async(verifyToken),
+    // Verify valid payload exists.
+    (req, res, next) => {
+        let {cid, json} = req.body;
 
-        const {
-            err,
-            stdout
-        } = await promisify(exec)(`ipfs add --quieter ${fileKey}`);
-
-        if (err) {
-            console.error(err);
-            promisify(exec)(`rm ${fileKey}`).catch(console.error);
-
-            return res.send({success: false, error: 'err'});
+        if (!cid && !json) {
+            return res.send({success: false});
         }
 
-        if (!stdout.trim()) {
-            console.error('no cid for json');
-            promisify(exec)(`rm ${fileKey}`).catch(console.error);
-
-            return res.send({success: false, error: 'err'});
-        }
-
-        cid = stdout.trim();
-    }
-
-    (async () => {
-        try {
-            await publishIPFSName(req.params.id, encodeURIComponent(cid), req.session.id, {skipCache: !!json});
-        } catch (err) {
-            console.error('Failed to publish IPFS record');
-
-            return console.error(err);
-        }
-
+        // Ensure JSON doesn't exceed size limitation, and that it's valid JSON.
         if (json) {
-            const {cid: existingCID} = db.__record[req.session.id].keyMap[req.params.id];
+            if (Buffer.byteLength(json, 'utf8') > 10000000) {
+                return res.send({success: false, error: 'JSON size exceeded'});
+            }
     
-            if (existingCID) {
-                promisify(exec)(`ipfs pin rm ${existingCID}`).catch(console.error);
+            try {
+                json = JSON.parse(json);
+            } catch (err) {
+                console.error('Failed to parse JSON');
+    
+                return res.send({success: false, error: 'JSON invalid'})
             }
         }
 
-        db.__record[req.session.id].keyMap[req.params.id].cid = cid;
+        return next();
+    },
+    _async(fetchVerifiedRecord),
+    _async(async (req, res) => {
+        const {cid, json} = req.body;
+        const fileKey = `${__dirname}/CID_TEMP_${Date.now()}.json`;
 
-        try {
-            await promisify(exec)(`rm ${fileKey}`);
-        } catch (err) {
-            console.error('Failed to remove IPFS record cache');
-            console.error(err);
+        // Create JSON file and pin it before creating name records.
+        if (json) {
+            await promisify(exec)(`touch ${fileKey}`);
+            await promisify(fs.writeFile)(fileKey, json);         
+
+            const {
+                err,
+                stdout
+            } = await promisify(exec)(`ipfs add --quieter ${fileKey}`);
+
+            if (err) {
+                console.error(err);
+                promisify(exec)(`rm ${fileKey}`).catch(console.error);
+
+                return res.send({success: false, error: 'err'});
+            }
+
+            if (!stdout.trim()) {
+                console.error('no cid for json');
+                promisify(exec)(`rm ${fileKey}`).catch(console.error);
+
+                return res.send({success: false, error: 'err'});
+            }
+
+            // Override CID with JSON file CID
+            cid = stdout.trim();
         }
-    })();
 
-    return res.send(Object.assign({}, db.__record[req.session.id].keyMap[req.params.id], {cid}));
-}));
+        // Publish name in background.
+        (async () => {
+            try {
+                // Skip caching CID content when storing raw JSON for user.
+                await publishIPFSName(req.params.id, encodeURIComponent(cid), req.session.id, {skipCache: !!json});
+            } catch (err) {
+                console.error('Failed to publish IPFS record');
+
+                return console.error(err);
+            }
+
+            // Remove pinned JSON file now that the other JSON file/name has been published.
+            if (json) {
+                const {cid: existingCID} = req.verifiedRecord;
+        
+                if (existingCID) {
+                    promisify(exec)(`ipfs pin rm ${existingCID}`).catch(console.error);
+                }
+
+                req.verifiedRecord.json = true;
+            } else {
+                req.verifiedRecord.json = false;
+            }
+
+            req.verifiedRecord.cid = cid;
+
+            await req.verifiedRecord.save();
+
+            // Remove pin cache file.
+            try {
+                await promisify(exec)(`rm ${fileKey}`);
+            } catch (err) {
+                console.error('Failed to remove IPFS record cache');
+                console.error(err);
+            }
+        })();
+
+        return res.send(Object.assign({}, req.verifiedRecord.toJSON(), {cid, json: !!json}));
+    }));
 
 app.use((req, res, next) => {
     if (!req.session) {
@@ -445,67 +435,90 @@ app.get('/manage', (req, res) => {
     res.sendFile(`${__dirname}/www/manage.html`);
 });
 
-app.get('/api/account/token/list', _async(async (req, res) => {
-    const tokenIdSet = Object.keys(db.__record[req.session.id].apiKeyMap);
-    const tokenSet = tokenIdSet.reduce((acc, tid) => {
-        const session = db.__session[tid] ? JSON.parse(JSON.stringify(db.__session[tid])) : null;
-
-        if (session) {
-            acc.push(Object.assign(session, {id: tid, hash: undefined}));
-        }
-
-        return acc;
-    }, []);
-
-    return res.send(tokenSet);
-}));
-
-app.delete('/api/account/token/:id', _async(async (req, res, next) => {
-    if (!db.__record[req.session.id].apiKeyMap || !db.__record[req.session.id].apiKeyMap[req.params.id]) {
-        return res.send({success: false});
-    }
-
-    delete db.__session[req.params.id];
-    delete db.__record[req.session.id].apiKeyMap[req.params.id];
-
-    return res.send({success: true});
-}));
-
 app.post('/api/account/token', _async(async (req, res, next) => {
-    let {alias, urlSet, permissionSet} = req.body;
+    let {
+        alias,
+        urlCsv,
+        permissionCsv
+    } = req.body;
 
-    if (!alias || !permissionSet || !permissionSet.length) {
+    alias = alias.trim();
+    urlCsv = urlCsv ? urlCsv.trim() : null;
+    permissionCsv = permissionCsv.trim();
+
+    const validPermissionCsvSet = [
+        'READ',
+        'WRITE',
+        'READ,WRITE',
+        'READ,WRITE,SELF_ONLY'
+    ];
+
+    if (!alias || !permissionCsv || !validPermissionCsvSet.includes(permissionCsv)) {
         return res.send({success: false});
     }
 
-    urlSet = urlSet || ['*'];
+    const {
+        id: accountId,
+        hash: accountHash,
+    } = (await Account.findByPk(req.session.id)) || {};
 
-    const account = db.__record[req.session.id];
-
-    if (!account) {
+    if (!accountHash) {
         return res.send({token: null});
     }
 
     const id = uuid();
     const token = await promisify(jwt.sign)({id}, SERVER_API_KEY);
-    const hash = hashSessionId(id, account.hash);
+    const hash = hashText(id, accountHash); 
 
-    db.__record[account.id].apiKeyMap[id] = Date.now();
-    db.__session[id] = {id: account.id, alias, urlSet, permissionSet, hash};
+    await AccessToken.create({
+        id,
+        alias,
+        permissionCsv,
+        urlCsv,
+        account: accountId,
+        hash
+    });
 
     return res.send({token, id})
 }));
 
+app.get('/api/account/token/list', _async(async (req, res) => {
+    const tokens = await AccessToken.findAll({
+        where: {
+            account: req.session.id
+        }
+    });
+
+    return res.send(tokens);
+}));
+
+app.delete('/api/account/token/:id', _async(async (req, res, next) => {
+    const token = await AccessToken.findOne({
+        where: {
+            id: req.params.id,
+            account: req.session.id
+        }
+    });
+
+    if (!token) {
+        return res.send({success: false});
+    }
+
+    await token.destroy();
+
+    return res.send({success: true});
+}));
+
 app.post('/api/account/password/reset', _async(async (req, res, next) => {
     const {
-        id,
+        key: secretKey,
         pw0,
         pw1,
         pw2
     } = req.body;
 
     if (
-        id !== req.session.id
+        !secretKey
         || !pw0
         || !pw1
         || !pw2
@@ -514,22 +527,39 @@ app.post('/api/account/password/reset', _async(async (req, res, next) => {
         return res.send({success: false})
     }
 
-    const valid = await promisify(bcrypt.compare)(pw0, db.__record[id].hash);
+    const account = await Account.findOne({
+        where: {
+            id: req.session.id,
+            secretKey
+        }
+    });
+
+    if (!account) {
+        return res.send({success: false})
+    }
+
+    const valid = await promisify(bcrypt.compare)(pw0, account.hash);
 
     if (!valid) {
         return res.send({success: false})
     }
 
-    db.__record[id].hash = await promisify(bcrypt.hash)(pw1, 10);
+    account.hash = await promisify(bcrypt.hash)(pw1, 10);
 
-    const cookie = await generateAuthToken(id);
+    account.save();
+
+    const cookie = await createAccountCookie(id);
 
     res.cookie(COOKIE_NAME, cookie, {maxAge: 5 * 365 * 24 * 60 * 60 * 1000, httpOnly: true});
 
     res.send({success: true});
 }));
 
-cacheDb();
+app.use((err, req, res, next) => {
+    console.error('Request failure:', err);
+
+    return res.redirect('/error');
+});
 
 app.listen(3031);
 
@@ -543,25 +573,17 @@ function _async(cb) {
     };
 }
 
-function cacheDb() {
-    cacheDbTimeout && clearTimeout(cacheDbTimeout);
+async function createAccountCookie(account) {
+    const sessionId = uuid();
+    const sessionHash = hashText(sessionId, account.hash);
 
-    fs.writeFile(DB_FILE, JSON.stringify(db), function (err) {
-        if (err) {
-            console.error('Failed to write persistent DB cache');
-            console.error(err);
-
-            return process.exit(1);
-        }
-
-        cacheDbTimeout = setTimeout(cacheDb, 5000);
+    await Cookie.create({
+        id: sessionId,
+        account: account.id,
+        hash: sessionHash
     });
-}
 
-async function generateAuthToken(accountId) {
-    const sessionId = createAccountSession(accountId);
-
-    return promisify(jwt.sign)({id: sessionId, iat: Date.now()}, SERVER_KEY);
+    return promisify(jwt.sign)({id: sessionId}, SERVER_KEY);
 }
 
 async function generateIPFSKey(name) {
@@ -583,7 +605,7 @@ async function deleteIPFSKey(name) {
 }
 
 async function publishIPFSName(id, resource, sessionId, {skipCache} = {}) {
-    db.__record[sessionId].keyMap[id].status = 1;
+    await Record.update({status: 1}, {where: {id}});
 
     let cacheTimeout;
     let timeout;
@@ -595,12 +617,22 @@ async function publishIPFSName(id, resource, sessionId, {skipCache} = {}) {
         await promisify(exec)(`touch ${__dirname}/${now}.json`);
     }
 
-    // TODO remove the file, double check cache logic and make sure it will keep trying no matter what. put a stall in if you need to.
     try {
         if (skipCache !== true) {
-            await new Promise((resolve, reject) => {
-                cache(resource, `${__dirname}/${now}.json`, resolve, reject).then(resolve).catch(reject);
-            });
+            try {
+                // @TODO This probably should go, or be rewritten w/o public gateways. Rate limits can't be bottleneck.
+                await new Promise((resolve, reject) => {
+                    cache(resource, `${__dirname}/${now}.json`, resolve, reject).then(resolve).catch(reject);
+                });
+            } catch (err) {
+                console.error('Pin caching failed', err);
+                // try {
+                //     await promisify(exec)(`ipfs get ${resource}`);
+                // } catch (err) {
+                //     console.error('Fallback pin caching failed', err);
+                //     resolve();
+                // }
+            }
         }
 
         await new Promise((resolve, reject) => {
@@ -608,16 +640,18 @@ async function publishIPFSName(id, resource, sessionId, {skipCache} = {}) {
         });
 
         if (skipCache !== true) {
-            await Promise.all([
-                promisify(exec)(`ipfs pin rm ${resource}`),
-                promisify(exec)(`rm ${__dirname}/${now}.json`)
-            ]);
+            promisify(exec)(`ipfs pin rm ${resource}`).catch(console.error);
+            promisify(exec)(`rm ${__dirname}/${now}.json`).catch(console.error);
         }
     } catch (err) {
         console.error(err);
+
+        await Record.update({status: 3}, {where: {id}});
     }
 
     async function cache(cid, fileName, resolve, reject, retries = 1) {
+        cid = encodeURIComponent(cid);
+
         console.log('caching', cid);
 
         const controller = new AbortController();
@@ -631,7 +665,8 @@ async function publishIPFSName(id, resource, sessionId, {skipCache} = {}) {
         try {
             const {
                 error
-            } = await promisify(exec)(`curl -X GET https://cloudflare-ipfs.com/ipfs/${encodeURIComponent(cid)} > ${fileName}`, {signal: controller.signal});
+                // @TODO Deal with cloudflare not working. We need a better pin fetching solution here even.
+            } = await promisify(exec)(`curl -X GET https://cloudflare-ipfs.com/ipfs/${cid} > ${fileName}`, {signal: controller.signal});
         
             if (error) {
                 return reject(error);
@@ -643,7 +678,7 @@ async function publishIPFSName(id, resource, sessionId, {skipCache} = {}) {
                 }, retries > 2 ? 10000 : 5000);
             }
 
-            return reject(err);
+            reject(err);
         }
 
         cacheTimeout && clearTimeout(cacheTimeout);
@@ -695,14 +730,13 @@ async function publishIPFSName(id, resource, sessionId, {skipCache} = {}) {
         }
     
         if (stderr) {
-            db.__record[sessionId].keyMap[id].status = 3;
+            await Record.update({status: 3}, {where: {id}});
 
             return reject(Object.assign(new Error('Failed to publish name resource'), {id, resource, stderr}));
         } else if (stdout.includes('Published to') && stdout.includes(resource)) {
             console.log('published', id, resource);
 
-            db.__record[sessionId].keyMap[id].status = 2;
-            db.__record[sessionId].keyMap[id].ipfs.cid = resource;
+            await Record.update({status: 2, cid: resource}, {where: {id}});
 
             return resolve();
         }
@@ -726,114 +760,71 @@ function noCacheHeaders(req, res, next) {
     next();
 }
 
-function createAccountSession(accountId) {
-    if (!db.__record[accountId] || !db.__record[accountId].hash) {
-        throw new Error('Invalid hash payload');
-    }
-
-    const sessionId = uuid();
-    const sessionHash = hashSessionId(sessionId, db.__record[accountId].hash);
-
-    db.__session[sessionId] = {id: sessionId, hash: sessionHash, createdAt: Date.now(), account: accountId};
-
-    return sessionId;
-}
-
-function createLinkKey(accountId) {
-    if (!db.__record[accountId] || !db.__record[accountId].hash) {
-        throw new Error('Invalid hash payload');
-    }
-
-    const linkKey = uuid();
-    const linkHash = hashSessionId(linkKey, db.__record[accountId].hash);
-
-    state.linkKeyMap[linkKey] = {hash: linkHash, createdAt: Date.now(), id: accountId};
-
-    return linkKey;
-} 
-
-function hashSessionId(sessionId, pwHash) {
-    return createHmac('sha256', pwHash)
-        .update(sessionId)
+function hashText(text, secret) {
+    return createHmac('sha256', secret)
+        .update(text)
         .digest('hex');
-}
-
-async function validateDeviceLinkSession(token) {
-    const {
-        i: linkKey,
-        c: createdAt
-    } = (await promisify(jwt.verify)(token, LINK_KEY)) || {};
-
-    if (
-        (!linkKey || !createdAt)
-        || (Date.now() - parseInt(createdAt) > 300000)
-        || !state.linkKeyMap[linkKey]
-    ) {
-        return false;
-    }
-
-    const linkKeySession = state.linkKeyMap[linkKey];
-
-    if (!linkKeySession) {
-        return false;
-    }
-
-    const account = db.__record[linkKeySession.id];
-
-    if (!account) {
-        return false;
-    }
-
-    const hash = hashSessionId(linkKey, account.hash);
-
-    if (hash !== linkKeySession.hash) {
-        return false;
-    }
-
-    return {account, session: {linkKey, createdAt}};
 }
 
 async function validateAPIToken(req) {
     const bearerToken = req.headers['no-fungible-auth-token'] || req.headers['authorization'];
 
     if (!bearerToken) {
-        return false;
+        return null;
     }
 
-    const token = bearerToken.split('Bearer ')[1];
+    const ciphertext = bearerToken.split('Bearer ')[1];
 
-    if (!token) {
-        return false;
+    if (!ciphertext) {
+        return null;
     }
 
     const {
-        id: sessionId,
-    } = (await promisify(jwt.verify)(token, SERVER_API_KEY)) || {};
+        id: tokenId,
+    } = (await promisify(jwt.verify)(ciphertext, SERVER_API_KEY)) || {};
 
-    if (!sessionId) {
-        return false;
+    if (!tokenId) {
+        return null;
     }
 
-    const session = db.__session[sessionId];
+    const accessToken = await AccessToken.findByPk(tokenId, {include: Account});
 
-    if (!session) {
-        return false;
+    const {
+        id: tokenPk,
+        Account: {
+            hash: accountHash
+        } = {},
+        hash: tokenHash
+    } = accessToken || {};
+
+    if (!accountHash || !tokenHash) {
+        return null;
     }
 
-    const {id, hash: storedHash} = session;
-    const account = db.__record[id];
+    const hash = hashText(tokenPk, accountHash);
 
-    if (!account) {
-        return false;
+    if (hash !== tokenHash) {
+        return null;
     }
 
-    const hash = hashSessionId(sessionId, account.hash);
+    return accessToken;
+}
 
-    if (hash !== storedHash) {
-        return false;
+async function fetchVerifiedRecord(req, res, next) {
+    const record = await Record.findOne({
+        where: Object.assign({
+            id: req.params.id,
+            account: req.session.id
+        }, req.session.identifier ? {token: req.session.identifier} : {})
+    });
+
+    if (!record) {
+        return res.send({success: false});
     }
 
-    return {session, sessionId};
+    req.verifiedRecord = record;
+
+    return next();
 }
 
 async function verifyToken(req, res, next) {
@@ -843,65 +834,36 @@ async function verifyToken(req, res, next) {
 
     const permissionMap = {
         READ: ['GET'],
-        WRITE: ['POST', 'PUT']
+        WRITE: ['POST', 'PUT', 'DELETE']
     };
 
     const {
-        session: {
-            id,
-            urlSet,
-            permissionSet,
-        } = {},
-        sessionId
-    } = {} = await validateAPIToken(req);
+        id: tokenId,
+        Account: {
+            id: accountId
+        },
+        permissionCsv,
+        urlCsv
+    } = (await validateAPIToken(req)) || {};
 
-    if (!id) {
+    if (!accountId) {
         return res.send({success: false});
     }
 
-    const permissionList = permissionSet.reduce((acc, p) => [...acc, ...(permissionMap[p] || [])], []);
+    const permissionList = permissionCsv.split(',').reduce((acc, p) => [...acc, ...(permissionMap[p] || [])], []);
 
-    if (!permissionList.includes(req.method)) {
+    if (
+        !permissionList.includes(req.method)
+        || urlCsv && !urlCsv.split(',').includes(req.hostname)
+    ) {
         return res.send({success: false});
     }
 
-    if (urlSet && urlSet.length && !urlSet.includes(req.hostname) && JSON.stringify(urlSet) !== JSON.stringify(['*'])) {
-        return res.send({success: false});
-    }
-
-    req.session = {id};
-    req.session.identifier = sessionId;
+    req.session = {id: accountId};
 
     if (permissionSet.includes('SELF_ONLY')) {
-        req.session.validateIdentifier = true;
+        req.session.identifier = tokenId;
     }
 
     return next();
 }
-
-// Beware input exec is viable to take an injection attack hit
-// async function createPointerResourceLocalCache(cid) {
-//     try {
-//         console.log('caching', cid);
-
-//         const now = Date.now();
-
-//         const {
-//             error,
-//             stdout,
-//             stderr
-//         } = await promisify(exec)(`touch ${__dirname}/${now}.json && curl -X GET https://cloudflare-ipfs.com/ipfs/${encodeURIComponent(cid)} > ${__dirname}/${now}.json && ipfs add ${__dirname}/${now}.json`);
-    
-//         if (!stdout.includes(cid)) {
-//             const err = new Error('Failed to cache name resource - unknown output', error, stderr, stdout);
-
-//             err.stderr = 'IPFS_CID_MISMATCH';
-
-//             throw err;
-//         }
-
-//         return `${__dirname}/${now}.json`;
-//     } catch (err) {
-//         console.error(err);
-//     }
-// }

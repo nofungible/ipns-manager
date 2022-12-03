@@ -1,3 +1,4 @@
 node_modules/
 www/polyfill.js
 server_key.json
+sequelize.json
