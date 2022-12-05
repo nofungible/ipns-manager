@@ -305,7 +305,7 @@ app.delete('/api/record/:id', cors(), _async(verifyToken), _async(fetchVerifiedR
 
     if (json) {
         try {
-            await promisify(exec)(`ipfs pin rm ${cid}`);
+            await promisify(exec)(`docker exec -it ipfs-kubo ipfs pin rm ${cid}`);
         } catch (err) {
             console.error('Failed to remove DELETE record pin', err);
         }
@@ -363,7 +363,7 @@ app.put(
             const {
                 err,
                 stdout
-            } = await promisify(exec)(`ipfs add --quieter ${fileKey}`);
+            } = await promisify(exec)(`docker exec -it ipfs-kubo ipfs add --quieter ${fileKey}`);
 
             if (err) {
                 console.error(err);
@@ -399,7 +399,7 @@ app.put(
                 const {cid: existingCID} = req.verifiedRecord;
         
                 if (existingCID) {
-                    promisify(exec)(`ipfs pin rm ${existingCID}`).catch(console.error);
+                    promisify(exec)(`docker exec -it ipfs-kubo ipfs pin rm ${existingCID}`).catch(console.error);
                 }
 
                 req.verifiedRecord.json = true;
@@ -627,7 +627,7 @@ async function publishIPFSName(id, resource, sessionId, {skipCache} = {}) {
             } catch (err) {
                 console.error('Pin caching failed', err);
                 // try {
-                //     await promisify(exec)(`ipfs get ${resource}`);
+                //     await promisify(exec)(`docker exec -it ipfs-kubo ipfs get ${resource}`);
                 // } catch (err) {
                 //     console.error('Fallback pin caching failed', err);
                 //     resolve();
@@ -640,7 +640,7 @@ async function publishIPFSName(id, resource, sessionId, {skipCache} = {}) {
         });
 
         if (skipCache !== true) {
-            promisify(exec)(`ipfs pin rm ${resource}`).catch(console.error);
+            promisify(exec)(`docker exec -it ipfs-kubo ipfs pin rm ${resource}`).catch(console.error);
             promisify(exec)(`rm ${__dirname}/${now}.json`).catch(console.error);
         }
     } catch (err) {
@@ -683,7 +683,7 @@ async function publishIPFSName(id, resource, sessionId, {skipCache} = {}) {
 
         cacheTimeout && clearTimeout(cacheTimeout);
 
-        await promisify(exec)(`ipfs add ${fileName}`);
+        await promisify(exec)(`docker exec -it ipfs-kubo ipfs add ${fileName}`);
 
         resolve();
     }
@@ -711,7 +711,7 @@ async function publishIPFSName(id, resource, sessionId, {skipCache} = {}) {
             const {
                 stdout: out,
                 stderr: err
-            } = await promisify(exec)(`ipfs name publish --key=${encodeURIComponent(id)} ${encodeURIComponent(resource)}`, {signal: controller.signal});
+            } = await promisify(exec)(`docker exec -it ipfs-kubo ipfs name publish --key=${encodeURIComponent(id)} ${encodeURIComponent(resource)}`, {signal: controller.signal});
 
             timeout && clearTimeout(timeout);
 
