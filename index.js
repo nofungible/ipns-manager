@@ -359,7 +359,8 @@ app.put(
     },
     _async(fetchVerifiedRecord),
     _async(async (req, res) => {
-        const {cid, json} = req.body;
+        let {cid, json} = req.body;
+
         const fileName = `CID_TEMP_${Date.now()}.json`;
         const fileKey = `${__dirname}/temp/${fileName}`;
 
