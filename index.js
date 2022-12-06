@@ -622,9 +622,9 @@ async function publishIPFSName(id, resource, sessionId, {skipCache} = {}) {
 
     const now = Date.now();
 
-    if (skipCache !== true) {
-        await promisify(exec)(`touch ${__dirname}/temp/${now}.json`);
-    }
+    // if (skipCache !== true) {
+    //     await promisify(exec)(`touch ${__dirname}/temp/${now}.json`);
+    // }
 
     try {
         if (skipCache !== true) {
@@ -650,7 +650,7 @@ async function publishIPFSName(id, resource, sessionId, {skipCache} = {}) {
 
         if (skipCache !== true) {
             promisify(exec)(`docker exec ipfs-kubo ipfs pin rm ${resource}`).catch(console.error);
-            promisify(exec)(`rm ${__dirname}/temp/${now}.json`).catch(console.error);
+            // promisify(exec)(`rm ${__dirname}/temp/${now}.json`).catch(console.error);
         }
     } catch (err) {
         console.error(err);
@@ -693,9 +693,9 @@ async function publishIPFSName(id, resource, sessionId, {skipCache} = {}) {
 
         cacheTimeout && clearTimeout(cacheTimeout);
 
-        const internalFile = `/data/temp/${fileName.split('/').slice(-1).pop()}`;
+        // const internalFile = `/data/temp/${fileName.split('/').slice(-1).pop()}`;
 
-        await promisify(exec)(`docker exec ipfs-kubo ipfs add ${internalFile}`);
+        // await promisify(exec)(`docker exec ipfs-kubo ipfs add ${internalFile}`);
 
         resolve();
     }
