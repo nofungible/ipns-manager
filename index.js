@@ -627,31 +627,31 @@ async function publishIPFSName(id, resource, sessionId, {skipCache} = {}) {
     }
 
     try {
-        // if (skipCache !== true) {
-        //     try {
-        //         // @TODO This probably should go, or be rewritten w/o public gateways. Rate limits can't be bottleneck.
-        //         await new Promise((resolve, reject) => {
-        //             cache(resource, `${__dirname}/temp/${now}.json`, resolve, reject).then(resolve).catch(reject);
-        //         });
-        //     } catch (err) {
-        //         console.error('Pin caching failed', err);
-        //         // try {
-        //         //     await promisify(exec)(`docker exec ipfs-kubo ipfs get ${resource}`);
-        //         // } catch (err) {
-        //         //     console.error('Fallback pin caching failed', err);
-        //         //     resolve();
-        //         // }
-        //     }
-        // }
+        if (skipCache !== true) {
+            try {
+                // @TODO This probably should go, or be rewritten w/o public gateways. Rate limits can't be bottleneck.
+                await new Promise((resolve, reject) => {
+                    cache(resource, `${__dirname}/temp/${now}.json`, resolve, reject).then(resolve).catch(reject);
+                });
+            } catch (err) {
+                console.error('Pin caching failed', err);
+                // try {
+                //     await promisify(exec)(`docker exec ipfs-kubo ipfs get ${resource}`);
+                // } catch (err) {
+                //     console.error('Fallback pin caching failed', err);
+                //     resolve();
+                // }
+            }
+        }
 
         await new Promise((resolve, reject) => {
             publish(timeout, controller, resolve, reject).then(resolve).catch(reject);
         });
 
-        // if (skipCache !== true) {
-        //     promisify(exec)(`docker exec ipfs-kubo ipfs pin rm ${resource}`).catch(console.error);
-        //     promisify(exec)(`rm ${__dirname}/temp/${now}.json`).catch(console.error);
-        // }
+        if (skipCache !== true) {
+            promisify(exec)(`docker exec ipfs-kubo ipfs pin rm ${resource}`).catch(console.error);
+            promisify(exec)(`rm ${__dirname}/temp/${now}.json`).catch(console.error);
+        }
     } catch (err) {
         console.error(err);
 
@@ -672,11 +672,12 @@ async function publishIPFSName(id, resource, sessionId, {skipCache} = {}) {
         }, 10000);
 
         try {
-            const {
-                error
-                // @TODO Deal with cloudflare not working. We need a better pin fetching solution here even.
-            } = await promisify(exec)(`curl -X GET https://cloudflare-ipfs.com/ipfs/${cid} > ${fileName}`, {signal: controller.signal});
-        
+            // const {
+            //     error
+            //     // @TODO Deal with cloudflare not working. We need a better pin fetching solution here even.
+            // } = await promisify(exec)(`curl -X GET https://cloudflare-ipfs.com/ipfs/${cid} > ${fileName}`, {signal: controller.signal});
+            const {error} = await promisify(exec)(`docker exec ipfs-kubo ipfs pin ${resource}`, {signal: controller.signal});
+
             if (error) {
                 return reject(error);
             }
