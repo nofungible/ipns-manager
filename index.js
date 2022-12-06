@@ -861,7 +861,7 @@ async function verifyToken(req, res, next) {
 
     req.session = {id: accountId};
 
-    if (permissionSet.includes('SELF_ONLY')) {
+    if (permissionList.includes('SELF_ONLY')) {
         req.session.identifier = tokenId;
     }
 
