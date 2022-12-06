@@ -411,6 +411,14 @@ app.put(
                     promisify(exec)(`docker exec ipfs-kubo ipfs pin rm ${existingCID}`).catch(console.error);
                 }
 
+                // Remove pin cache file.
+                try {
+                    await promisify(exec)(`rm ${fileKey}`);
+                } catch (err) {
+                    console.error('Failed to remove JSON IPFS record cache');
+                    console.error(err);
+                }
+
                 req.verifiedRecord.json = true;
             } else {
                 req.verifiedRecord.json = false;
@@ -419,14 +427,6 @@ app.put(
             req.verifiedRecord.cid = cid;
 
             await req.verifiedRecord.save();
-
-            // Remove pin cache file.
-            try {
-                await promisify(exec)(`rm ${fileKey}`);
-            } catch (err) {
-                console.error('Failed to remove IPFS record cache');
-                console.error(err);
-            }
         })();
 
         return res.send(Object.assign({}, req.verifiedRecord.toJSON(), {cid, json: !!json}));
