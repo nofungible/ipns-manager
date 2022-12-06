@@ -733,7 +733,7 @@ async function publishIPFSName(id, resource, sessionId, {skipCache} = {}) {
             timeout && clearTimeout(timeout);
 
             if (err.name === 'AbortError') {
-                setTimeout(() => {
+                return setTimeout(() => {
                     return publish(timeout, controller, resolve, reject, retries + 1);
                 }, retries > 2 ? 10000 : 5000);
             }
