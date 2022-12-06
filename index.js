@@ -872,7 +872,7 @@ async function verifyToken(req, res, next) {
 
     req.session = {id: accountId};
 
-    if (permissionCsv.contains('SELF_ONLY')) {
+    if (permissionCsv.includes('SELF_ONLY')) {
         req.session.identifier = tokenId;
     }
 
