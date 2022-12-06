@@ -2,13 +2,11 @@
 
 const fs = require('fs');
 const path = require('path');
-   
-fs.mkdir(path.join(__dirname, 'temp'), (err) => {
-    if (err) {
-        console.error('Unable to create temp file directory');
-        process.exit(1);
-    }
-});
+const dir = fs.mkdir(path.join(__dirname, 'temp'));
+
+if (!fs.existsSync(dir)){
+    fs.mkdirSync(dir);
+}
 
 require('dotenv').config()
 
