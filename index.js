@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const dir = fs.mkdir(path.join(__dirname, 'temp'));
+const dir = path.join(__dirname, 'temp');
 
 if (!fs.existsSync(dir)){
     fs.mkdirSync(dir);
