@@ -9,7 +9,7 @@ const sequelize = new Sequelize({
     username: process.env.IPNS_DATABASE_USERNAME,
     password: process.env.IPNS_DATABASE_PASSWORD,
     dialect: 'postgres',
-    logging: true
+    logging: false
 });
 
 Account(sequelize);
