@@ -676,7 +676,7 @@ async function publishIPFSName(id, resource, sessionId, {skipCache} = {}) {
             //     error
             //     // @TODO Deal with cloudflare not working. We need a better pin fetching solution here even.
             // } = await promisify(exec)(`curl -X GET https://cloudflare-ipfs.com/ipfs/${cid} > ${fileName}`, {signal: controller.signal});
-            const {error} = await promisify(exec)(`docker exec ipfs-kubo ipfs pin ${resource}`, {signal: controller.signal});
+            const {error} = await promisify(exec)(`docker exec ipfs-kubo ipfs pin add ${resource}`, {signal: controller.signal});
 
             if (error) {
                 return reject(error);
