@@ -1,4 +1,5 @@
 node_modules/
+temp/
 www/polyfill.js
 server_key.json
 sequelize.json

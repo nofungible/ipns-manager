@@ -1,5 +1,15 @@
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
+   
+fs.mkdir(path.join(__dirname, 'temp'), (err) => {
+    if (err) {
+        console.error('Unable to create temp file directory');
+        process.exit(1);
+    }
+});
+
 require('dotenv').config()
 
 const {Account, AccessToken, Cookie, Record} = require('./src/models');
@@ -7,7 +17,6 @@ const {Account, AccessToken, Cookie, Record} = require('./src/models');
 const KEY_FILE = `${__dirname}/server_key.json`;
 const COOKIE_NAME = 'NO_FUNGIBLE_DNS_SESSION';
 
-const fs = require('fs');
 const {v4: uuid} = require('uuid');
 const {getPkhfromPk, verifySignature} = require('@taquito/utils');
 
@@ -353,7 +362,7 @@ app.put(
     _async(fetchVerifiedRecord),
     _async(async (req, res) => {
         const {cid, json} = req.body;
-        const fileKey = `${__dirname}/CID_TEMP_${Date.now()}.json`;
+        const fileKey = `${__dirname}/temp/CID_TEMP_${Date.now()}.json`;
 
         // Create JSON file and pin it before creating name records.
         if (json) {
@@ -614,7 +623,7 @@ async function publishIPFSName(id, resource, sessionId, {skipCache} = {}) {
     const now = Date.now();
 
     if (skipCache !== true) {
-        await promisify(exec)(`touch ${__dirname}/${now}.json`);
+        await promisify(exec)(`touch ${__dirname}/temp/${now}.json`);
     }
 
     try {
@@ -622,7 +631,7 @@ async function publishIPFSName(id, resource, sessionId, {skipCache} = {}) {
             try {
                 // @TODO This probably should go, or be rewritten w/o public gateways. Rate limits can't be bottleneck.
                 await new Promise((resolve, reject) => {
-                    cache(resource, `${__dirname}/${now}.json`, resolve, reject).then(resolve).catch(reject);
+                    cache(resource, `${__dirname}/temp/${now}.json`, resolve, reject).then(resolve).catch(reject);
                 });
             } catch (err) {
                 console.error('Pin caching failed', err);
@@ -641,7 +650,7 @@ async function publishIPFSName(id, resource, sessionId, {skipCache} = {}) {
 
         if (skipCache !== true) {
             promisify(exec)(`docker exec -it ipfs-kubo ipfs pin rm ${resource}`).catch(console.error);
-            promisify(exec)(`rm ${__dirname}/${now}.json`).catch(console.error);
+            promisify(exec)(`rm ${__dirname}/temp/${now}.json`).catch(console.error);
         }
     } catch (err) {
         console.error(err);
