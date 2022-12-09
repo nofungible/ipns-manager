@@ -564,6 +564,10 @@ app.post('/api/account/password/reset', _async(async (req, res, next) => {
     res.send({success: true});
 }));
 
+app.use((req, res) => {
+    return res.redirect('/error');
+});
+
 app.use((err, req, res, next) => {
     console.error('Request failure:', err);
 
