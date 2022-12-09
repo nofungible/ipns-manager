@@ -512,6 +512,10 @@ h1 {
 }
 
 @media only screen and (max-width: 625px) {
+    #api-key-table {
+        width: 100%;
+    }
+
     #header .button {
         display: none;
     }
@@ -530,6 +534,10 @@ h1 {
 
     #content {
         width: 90%;
+    }
+
+    #new-ipns-key-tooltip {
+        width: auto;
     }
 
     .content-block td > div {
