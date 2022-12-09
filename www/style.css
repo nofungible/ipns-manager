@@ -537,7 +537,7 @@ h1 {
     }
 
     #new-ipns-key-tooltip {
-        width: auto;
+        width: auto !important;
     }
 
     .content-block td > div {
