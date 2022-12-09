@@ -60,6 +60,7 @@ html, body {
 }
 
 #header {
+    position: relative;
     font-family: 'Courier New', Courier, monospace;
     font-weight: bold;
 }
@@ -91,6 +92,7 @@ html, body {
 }
 
 #content {
+    position: relative;
     margin: 25px auto;
     width: 600px;
     text-align: center;
@@ -489,4 +491,49 @@ h1 {
     text-align: center;
     position: absolute;
     bottom: 0;
+}
+
+#menu-button {
+    display: none;
+}
+
+#mobile-menu {
+    width: 100%;
+    height: 55px;
+    position: absolute;
+    top: 100%;
+    background-color: #EEF1DB;
+    z-index: 99999999;
+}
+
+#mobile-menu table {
+    width: 100% !important;
+    border-bottom: solid 2px #485B63;
+}
+
+@media only screen and (max-width: 625px) {
+    #header .button {
+        display: none;
+    }
+
+    #menu-button {
+        display: inline-block !important;
+    }
+
+    #mobile-menu .button {
+        display: inline-block !important;
+    }
+
+    #header table {
+        width: 100px;
+    }
+
+    #content {
+        width: 90%;
+    }
+
+    .content-block td > div {
+        width: 90%;
+        margin: 50px auto;
+    }
 }

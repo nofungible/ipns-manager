@@ -9,6 +9,21 @@
     </head>
     <body>
         <div id="header">
+            <div id="mobile-menu" class="hidden">
+                <table>
+                    <tbody>
+                        <td>
+                            <span class="button">DONATE</span>
+                        </td>
+                        <td>
+                            <a class="button" href="/about">ABOUT</a>
+                        </td>
+                        <td>
+                            <a class="button" href="/manage">SIGN_IN</a>
+                        </td>
+                    </tbody>
+                </table>
+            </div>
             <p><span>🌐</span>ipns://</p>
             <table>
                 <tbody>
@@ -19,7 +34,10 @@
                         <a class="button" href="/about">ABOUT</a>
                     </td>
                     <td>
-                        <a class="button" href="/sign-out">SIGN_OUT</a>
+                        <a class="button" href="/manage">SIGN_IN</a>
+                    </td>
+                    <td>
+                        <div id="menu-button" class="button">MENU</div>
                     </td>
                 </tbody>
             </table>
@@ -119,16 +137,17 @@
             </div>
         </div>
             <!--
-        Site Footer Push
-        Invisible element used to push the content above where the absolutely positioned sticky footer visually rests.
-        Must be the same height as footer + box sizing.
-    -->
-    <div id="footer-push"></div>
+            Site Footer Push
+            Invisible element used to push the content above where the absolutely positioned sticky footer visually rests.
+            Must be the same height as footer + box sizing.
+        -->
+        <div id="footer-push"></div>
 
-    <!-- Site Footer -->
-    <div id="footer">
-        <p>Provided/Maintained by <a href="https://twitter.com/noFungibleNFT">@noFungibleNFT</a></p>
-    </div>
+        <!-- Site Footer -->
+        <div id="footer">
+            <p>Provided/Maintained by <a href="https://twitter.com/noFungibleNFT">@noFungibleNFT</a></p>
+        </div>
         <script src="/manage.js"></script>
+        <script src="/script.js"></script>
     </body>
 </html>
