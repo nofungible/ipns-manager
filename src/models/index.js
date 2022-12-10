@@ -2,7 +2,9 @@ const Account = require('./Account');
 const AccessToken = require('./AccessToken');
 const Cookie = require('./Cookie');
 const Record = require('./Record');
+const InviteKey = require('./InviteKey');
 const { Sequelize, DataTypes } = require('sequelize');
+const Banned = require('./Banned');
 
 const sequelize = new Sequelize({
     database: process.env.IPNS_DATABASE,
@@ -16,6 +18,8 @@ Account(sequelize);
 AccessToken(sequelize);
 Cookie(sequelize);
 Record(sequelize);
+InviteKey(sequelize);
+Banned(sequelize);
 
 sequelize.models.Account.hasMany(sequelize.models.AccessToken, {
     foreignKey: {

@@ -10,12 +10,12 @@ if (!fs.existsSync(dir)){
 
 require('dotenv').config()
 
-const {Account, AccessToken, Cookie, Record} = require('./src/models');
+const {Account, AccessToken, Cookie, Record, InviteKey, Banned} = require('./src/models');
 
 const KEY_FILE = `${__dirname}/server_key.json`;
 const COOKIE_NAME = 'NO_FUNGIBLE_DNS_SESSION';
 
-const {v4: uuid} = require('uuid');
+const {v4: uuid, validate: uuidValidate} = require('uuid');
 const {getPkhfromPk, verifySignature} = require('@taquito/utils');
 
 try {
@@ -38,6 +38,8 @@ const {exec} = require('child_process');
 const {promisify} = require('util');
 const {createHmac} = require('crypto');
 
+const banCountMap = {};
+const bannedList = [];
 const app = express();
 
 app.use(express.static(`${process.cwd()}/www`));
@@ -50,7 +52,7 @@ app.use(noCacheHeaders);
  */
 
 app.post('/api/account/create', verifyPw, _async(async (req, res) => {
-    const {pw, message, pubkey, address, signature} = req.body;
+    const {pw, message, pubkey, address, signature, inviteKey} = req.body;
 
     if (!verifySignature(message, pubkey, signature)) {
         console.error('Invalid signature');
@@ -60,6 +62,38 @@ app.post('/api/account/create', verifyPw, _async(async (req, res) => {
 
     if (getPkhfromPk(pubkey) !== address) {
         console.error('Address mismatch');
+
+        return res.send({success: false});
+    }
+
+    if (bannedList.includes(address)) {
+        console.error('Account is banned', address);
+
+        return res.send({success: false});
+    }
+
+    const banned = await Banned.findOne({where: {identifier: address}});
+
+    if (banned) {
+        console.error('Account is banned', address);
+
+        bannedList.push(address);
+
+        return res.send({success: false});
+    }
+
+    const inviteKeyRecord = uuidValidate(inviteKey) && (await InviteKey.findOne({where: {key: inviteKey}}));
+
+    if (!inviteKeyRecord) {
+        console.error('No invite key');
+
+        banCountMap[address] = banCountMap[address] ? banCountMap[address] + 1 : 1;
+
+        if (banCountMap[address] >= 3) {
+            await Banned.create({identifier: address});
+
+            bannedList.push(address);
+        }
 
         return res.send({success: false});
     }
@@ -82,6 +116,8 @@ app.post('/api/account/create', verifyPw, _async(async (req, res) => {
     const cookie = await createAccountCookie(account);
 
     res.cookie(COOKIE_NAME, cookie, {maxAge: 5 * 365 * 24 * 60 * 60 * 1000, httpOnly: true});
+
+    await inviteKeyRecord.destroy();
 
     return res.send({key: account.secretKey});
 }));

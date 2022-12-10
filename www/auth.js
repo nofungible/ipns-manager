@@ -100,6 +100,10 @@
     }
 
     function submitRegisterAccount() {
+        const key = window.prompt('Enter your invite key');
+
+        document.querySelector('#new-account-password-input').setAttribute('data-invite-key', key);
+
         syncWalletCb(async (wallet) => {
             const activeAccount = await wallet.getActiveAccount();
 
@@ -107,7 +111,7 @@
 
             document.querySelector('#register-account-container').classList.add('hidden');
             document.querySelector('#create-account-container').classList.remove('hidden');
-        }, true).catch(console.error); 
+        }, true).catch(console.error);
     }
 
     async function submitCreateAccount() {
@@ -142,7 +146,15 @@
                 return false;
             }
 
-            const {key} = await request('POST', '/api/account/create', {pw, message: payloadBytes, signature, address: activeAccount.address, pubkey: activeAccount.publicKey});
+            const inviteKey = document.querySelector('#new-account-password-input').getAttribute('data-invite-key');
+            const {key} = await request('POST', '/api/account/create', {
+                pw,
+                message: payloadBytes,
+                signature,
+                address: activeAccount.address,
+                pubkey: activeAccount.publicKey,
+                inviteKey
+            });
 
             if (!key) {
                 return false;
