@@ -339,12 +339,12 @@ app.patch('/api/record/:id', _async(verifyToken), _async(async (req, res) => {
 
 app.delete('/api/record/:id', cors(), _async(verifyToken), _async(fetchVerifiedRecord), _async(async (req, res) => {
     const {
-        key,
+        id,
         cid,
         json
     } = req.verifiedRecord;
 
-    await deleteIPFSKey(key);
+    await deleteIPFSKey(id);
 
     if (json) {
         try {
