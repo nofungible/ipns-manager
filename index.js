@@ -73,13 +73,6 @@ app.get('/ipns/:key',
         proxyReqPathResolver: (req) => {
             return `/ipns/${req.params.key}`;
         },
-        userResHeaderDecorator: (headers) => {
-            let newHeaders;
-
-            noCacheHeaders(null, {setHeader: (k, v) => {headers[k] = v;}}, () => {newHeaders = headers});
-
-            return newHeaders;
-        },
         proxyErrorHandler: function(err, res) {
             console.error(err);
 
