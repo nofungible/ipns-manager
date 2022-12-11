@@ -34,7 +34,7 @@ const cookieParser = require('cookie-parser');
 const cors = require('cors')
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const proxy = require('express-http-proxy');
+const { createProxyMiddleware: proxy } = require('http-proxy-middleware');
 const {exec} = require('child_process');
 const {promisify} = require('util');
 const {createHmac} = require('crypto');
@@ -69,16 +69,7 @@ app.get('/ipns/:key',
 
         return res.sendStatus(404);
     }),
-    proxy('localhost:3032', {
-        proxyReqPathResolver: (req) => {
-            return `/ipns/${req.params.key}`;
-        },
-        proxyErrorHandler: function(err, res) {
-            console.error(err);
-
-            return res.sendStatus(500);
-        }
-    })
+    createProxyMiddleware({target: 'http://localhost:3032/ipns/'})
 )
 
 app.post('/api/account/create', verifyPw, _async(async (req, res) => {
