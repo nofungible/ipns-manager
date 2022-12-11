@@ -34,12 +34,14 @@ const cookieParser = require('cookie-parser');
 const cors = require('cors')
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const proxy = require('express-http-proxy');
 const {exec} = require('child_process');
 const {promisify} = require('util');
 const {createHmac} = require('crypto');
 
 const banCountMap = {};
 const bannedList = [];
+const validKeyMap = {};
 const app = express();
 
 app.use(express.static(`${process.cwd()}/www`));
@@ -50,6 +52,41 @@ app.use(noCacheHeaders);
 /**
  * Unauthenticated Routes
  */
+
+app.get('/ipns/:key',
+    _await(async (req, res, next) => {
+        if (validKeyMap[req.params.key]) {
+            return next();
+        }
+
+        const record = await Record.findOne({where: {key}});
+
+        if (record) {
+            validKeyMap[req.params.key] = true;
+
+            return next();
+        }
+
+        return res.sendStatus(404);
+    }),
+    proxy('localhost:3032', {
+        proxyReqPathResolver: (req) => {
+            return `/ipns/${req.params.key}`;
+        },
+        userResHeaderDecorator: (headers) => {
+            let newHeaders;
+
+            noCacheHeaders(null, {setHeader: (k, v) => {headers[k] = v;}}, () => {newHeaders = headers});
+
+            return newHeaders;
+        },
+        proxyErrorHandler: function(err, res) {
+            console.error(err);
+
+            return res.sendStatus(500);
+        }
+    })
+)
 
 app.post('/api/account/create', verifyPw, _async(async (req, res) => {
     const {pw, message, pubkey, address, signature, inviteKey} = req.body;
@@ -341,7 +378,8 @@ app.delete('/api/record/:id', cors(), _async(verifyToken), _async(fetchVerifiedR
     const {
         id,
         cid,
-        json
+        json,
+        key
     } = req.verifiedRecord;
 
     await deleteIPFSKey(id);
@@ -356,6 +394,8 @@ app.delete('/api/record/:id', cors(), _async(verifyToken), _async(fetchVerifiedR
 
     // @TODO retain records some way
     await req.verifiedRecord.destroy();
+
+    delete validKeyMap[key];
 
     return res.send(req.verifiedRecord);
 }));
