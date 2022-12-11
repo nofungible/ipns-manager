@@ -893,7 +893,7 @@ async function verifyToken(req, res, next) {
         id: tokenId,
         Account: {
             id: accountId
-        },
+        } = {},
         permissionCsv,
         urlCsv
     } = (await validateAPIToken(req)) || {};
