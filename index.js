@@ -54,7 +54,7 @@ app.use(noCacheHeaders);
  */
 
 app.get('/ipns/:key',
-    _await(async (req, res, next) => {
+    _async(async (req, res, next) => {
         if (validKeyMap[req.params.key]) {
             return next();
         }
