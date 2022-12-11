@@ -93,10 +93,9 @@ html, body {
 
 #content {
     position: relative;
-    margin: 25px auto;
+    margin: 25px auto 0;
     width: 600px;
     text-align: center;
-    padding-bottom: 25px;
 }
 
 #content.full {
@@ -484,7 +483,12 @@ h1 {
 #footer,
 #footer-push {
     width: 100%;
-    height: 50px;
+    height: 75px;
+}
+
+#footer p {
+    margin-top: 12.5px;
+    line-height: 25px;
 }
 
 #footer {
@@ -509,6 +513,71 @@ h1 {
 #mobile-menu table {
     width: 100% !important;
     border-bottom: solid 2px #485B63;
+}
+
+#pop-up-container {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    z-index: 999999999999999999;
+}
+
+#pop-up-container > table {
+    width: 100%;
+    height: 100%;
+}
+
+#pop-up-container table td {
+    vertical-align: middle;
+    text-align: center;
+}
+
+#pop-up-container table td > div {
+    position: relative;
+    display: inline-block;
+    width: 300px;
+    background-color: #EEF1DB;
+    border: solid 3px #485B63;
+    border-radius: 5px;
+    padding: 20px;
+}
+
+#pop-up-container table td > div p {
+    font-size: 1.25rem;
+    line-height: 1.5rem;
+}
+
+#pop-up-container #tezos-address {
+    text-indent: 5px;
+    display: inline-block;
+    width: 70%;
+    height: 25px;
+    line-height: 25px;
+    vertical-align: middle;
+    background-color: gray;
+    color: white;
+    overflow: hidden;
+    margin-right: 5px;
+}
+
+#copy-donation-address {
+    display: inline-block;
+    height: 25px;
+    line-height: 25px;
+    vertical-align: middle;
+    vertical-align: middle;
+}
+
+#close-pop-up {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    color: #EEF1DB;
+    background-color: #485B63;
+    border-radius: 10px;
+    padding: 2.5px;
+    line-height: 10px;
+    font-size: .8rem;
 }
 
 @media only screen and (max-width: 625px) {

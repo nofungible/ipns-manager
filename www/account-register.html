@@ -8,12 +8,32 @@
         <title>web3 Content Routing</title>
     </head>
     <body>
+        <div id="pop-up-container" class="hidden">
+            <table>
+                <tbody>
+                    <td>
+                       <div id="pop-up">
+                            <span id="close-pop-up" class="interactive action-controller" data-action="close-pop-up">X</span>
+                            <h1>Help keep this project alive!</h1>
+                            <p>
+                                If you believe in this project, and want to see more projects, consider donating to the Tezos wallet below. 💕
+                            </p>
+                            <br>
+                            <span id="tezos-address">
+                                tz1Kx4ydaiJHThd2nTgXR25JPTZtKyLG9KC1
+                            </span>
+                            <span id="copy-donation-address" class="action-controller interactive" data-action="copy-target-text" data-target="#tezos-address" data-activated-target="">📋</span>
+                       </div>
+                    </td>
+                </tbody>
+            </table>
+        </div>
         <div id="header">
             <div id="mobile-menu" class="hidden">
                 <table>
                     <tbody>
                         <td>
-                            <span class="button">DONATE</span>
+                            <span class="button action-controller" data-action="open-pop-up">DONATE</span>
                         </td>
                         <td>
                             <a class="button" href="/about">ABOUT</a>
@@ -28,7 +48,7 @@
             <table>
                 <tbody>
                     <td>
-                        <span class="button">DONATE</span>
+                        <span class="button action-controller" data-action="open-pop-up">DONATE</span>
                     </td>
                     <td>
                         <a class="button" href="/about">ABOUT</a>
@@ -129,17 +149,19 @@
             </div>
            </div>
         </div>
-            <!--
-                Site Footer Push
-                Invisible element used to push the content above where the absolutely positioned sticky footer visually rests.
-                Must be the same height as footer + box sizing.
-            -->
-    <div id="footer-push"></div>
+        <!--
+            Site Footer Push
+            Invisible element used to push the content above where the absolutely positioned sticky footer visually rests.
+            Must be the same height as footer + box sizing.
+        -->
+        <div id="footer-push"></div>
 
-    <!-- Site Footer -->
-    <div id="footer">
-        <p>Provided/Maintained by <a href="https://twitter.com/noFungibleNFT">@noFungibleNFT</a></p>
-    </div>
+        <!-- Site Footer -->
+        <div id="footer">
+            <p>Provided/Maintained by <a href="https://twitter.com/noFungibleNFT">@noFungibleNFT</a>
+            <br>
+            <a href = "mailto: contact@nofungible.cloud">contact@nofungible.cloud</a></p>
+        </div>
         <script src="/polyfill.js"></script>
         <script src="/taquito-utils.umd.js"></script>
         <script src="/beacon-sdk.min.js"></script>

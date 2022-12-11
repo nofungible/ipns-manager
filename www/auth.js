@@ -15,7 +15,6 @@
     });
 
     const authHandlers = {
-        'copy-target-text': copyTargetText,
         'register-account': submitRegisterAccount,
         'create-account': submitCreateAccount,
         'reset-password': submitResetPassword,
@@ -246,40 +245,6 @@
             document.querySelector('#pw-reset-success').classList.remove('hidden');
             document.querySelector('#pw-reset-success-tooltip').classList.remove('hidden');
             document.querySelector('#pw-reset-submit').classList.add('hidden');
-        }
-    }
-
-    function copyTargetText(el) {
-        const target = el.getAttribute('data-target');
-        const text = document.querySelector(target).innerText;
-
-        if (!text) {
-            return false;
-        }
-
-        copyText(text);
-
-        el.innerText = '✅';
-
-        setTimeout(() => {
-            el.innerText = '📋';
-        }, 5000);
-    }
-
-    function copyText(text) {
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(text)
-                .catch(function (err) {
-                    console.error('Failed to copy settings to clipboard', err);
-                });
-        } else if (window.clipboardData) {
-            try {
-                window.clipboardData.setData("Text", text);
-            } catch (err) {
-                throw new Error('Unable to copy to clipboard');
-            }
-        } else {
-            throw new Error('Unable to copy to clipboard');
         }
     }
 })();
