@@ -69,7 +69,7 @@ app.get('/ipns/:key',
 
         return res.sendStatus(404);
     }),
-    createProxyMiddleware({target: 'http://localhost:3032/ipns/'})
+    proxy({target: 'http://localhost:3032/ipns/'})
 )
 
 app.post('/api/account/create', verifyPw, _async(async (req, res) => {
