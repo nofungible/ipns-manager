@@ -59,7 +59,7 @@ app.get('/ipns/:key',
             return next();
         }
 
-        const record = await Record.findOne({where: {key}});
+        const record = await Record.findOne({where: {key: req.params.key}});
 
         if (record) {
             validKeyMap[req.params.key] = true;
