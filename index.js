@@ -332,32 +332,6 @@ app.get('/api/record/list', cors(), _async(verifyToken), _async(async (req, res)
     return res.send(records);
 }));
 
-// PATCH is not an allowed action with API tokens, so we don't need to verify record ownership.
-app.patch('/api/record/:id', _async(verifyToken), _async(async (req, res) => {
-    const {alias} = req.body;
-
-    if (!alias) {
-        return res.send({success: false});
-    }
-
-    const record = await Record.findOne({
-        where: {
-            id: req.params.id,
-            account: req.session.id
-        }
-    });
-
-    if (!record) {
-        return res.send({success: false});
-    }
-
-    record.alias = alias;
-
-    await record.save();
-
-    return res.send(Object.assign({}, record.toJSON(), {alias}));
-}));
-
 app.delete('/api/record/:id', cors(), _async(verifyToken), _async(fetchVerifiedRecord), _async(async (req, res) => {
     const {
         id,
@@ -500,9 +474,31 @@ app.use((req, res, next) => {
     return next();
 });
 
-app.get('/manage', (req, res) => {
-    res.sendFile(`${__dirname}/www/manage.html`);
-});
+// PATCH is not an allowed action with API tokens, so we don't need to verify record ownership.
+app.patch('/api/record/:id', _async(async (req, res) => {
+    const {alias} = req.body;
+
+    if (!alias) {
+        return res.send({success: false});
+    }
+
+    const record = await Record.findOne({
+        where: {
+            id: req.params.id,
+            account: req.session.id
+        }
+    });
+
+    if (!record) {
+        return res.send({success: false});
+    }
+
+    record.alias = alias;
+
+    await record.save();
+
+    return res.send(Object.assign({}, record.toJSON(), {alias}));
+}));
 
 app.post('/api/account/token', _async(async (req, res, next) => {
     let {
@@ -623,6 +619,14 @@ app.post('/api/account/password/reset', _async(async (req, res, next) => {
 
     res.send({success: true});
 }));
+
+app.get('/manage', (req, res) => {
+    res.sendFile(`${__dirname}/www/manage.html`);
+});
+
+app.get('/docs', (req, res) => {
+    res.sendFile(`${__dirname}/www/docs.html`);
+});
 
 app.use((req, res) => {
     return res.redirect('/error');

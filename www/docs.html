@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="msapplication-tap-highlight" content="no">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="/style.css">
+        <title>web3 Content Routing</title>
+    </head>
+    <body>
+        <div id="pop-up-container" class="hidden">
+            <table>
+                <tbody>
+                    <td>
+                       <div id="pop-up">
+                            <span id="close-pop-up" class="interactive action-controller" data-action="close-pop-up">X</span>
+                            <h1>Help keep this project alive!</h1>
+                            <p>
+                                If you believe in this project, and want to see more projects, consider donating to the Tezos wallet below. 💕
+                            </p>
+                            <br>
+                            <span id="tezos-address">
+                                tz1Kx4ydaiJHThd2nTgXR25JPTZtKyLG9KC1
+                            </span>
+                            <span id="copy-donation-address" class="action-controller interactive" data-action="copy-target-text" data-target="#tezos-address" data-activated-target="">📋</span>
+                       </div>
+                    </td>
+                </tbody>
+            </table>
+        </div>
+        <div id="header">
+            <div id="mobile-menu" class="hidden">
+                <table>
+                    <tbody>
+                        <td>
+                            <span class="button action-controller" data-action="open-pop-up">DONATE</span>
+                        </td>
+                        <td>
+                            <a class="button" href="/about">ABOUT</a>
+                        </td>
+                        <td>
+                            <a class="button" href="/manage">SIGN_IN</a>
+                        </td>
+                    </tbody>
+                </table>
+            </div>
+            <p><span>🌐</span>ipns://</p>
+            <table>
+                <tbody>
+                    <td>
+                        <span class="button action-controller" data-action="open-pop-up">DONATE</span>
+                    </td>
+                    <td>
+                        <a class="button" href="/about">ABOUT</a>
+                    </td>
+                    <td>
+                        <a class="button" href="/manage">SIGN_IN</a>
+                    </td>
+                    <td>
+                        <div id="menu-button" class="button">MENU</div>
+                    </td>
+                </tbody>
+            </table>
+            <div style="height: 1px; background-color: red;"></div>
+            <div style="height: 1px; background-color: orange;"></div>
+            <div style="height: 1px; background-color: yellow;"></div>
+            <div style="height: 1px; background-color: blue;"></div>
+            <div style="height: .5px; background-color: purple;"></div>
+        </div>
+        <div id="content" class="full">
+            <div class="content-block">
+                <table>
+                    <tbody>
+                        <td>
+                           <div>
+                                <h1>API Documentation</h1>
+                                <p>
+                                    The ipns.app API allows you to create and manage IPNS records programmatically.
+                                    <br><br>
+                                    You will need to generate an API key to gain access to the API.
+                                    <br><br>
+                                    Your API Key should be added as an "Authorization" header with the value "Bearer YOUR_API_KEY"
+                                    <br><br>
+                                    The following endpoints are currently enabled. Endpoints are grouped by their allowed permissions.
+                                    <br><br>
+                                    <span style="text-decoration: underline;">"READ", "SELF ONLY"*</span>
+                                    <br><br>
+                                    - GET https://ipns.app/api/record/list
+                                    <br>
+                                    - GET https://ipns.app/api/record/:id
+                                    <br><br>
+                                    <span style="text-decoration: underline;">"WRITE", "SELF ONLY"*</span>
+                                    <br><br>
+                                    - POST https://ipns.app/api/record
+                                    <br>
+                                    - PUT https://ipns.app/api/record/:id
+                                    <br>
+                                    - DELETE https://ipns.app/api/record/:id
+                                    <br><br>
+                                    <p style="font-size: .9rem; font-style: italic;">* API Keys with the "SELF ONLY" permission have READ + WRITE permissions, but only for IPNS Records that they themselves create.</p>
+                                </p>
+                           </div>
+                        </td>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div id="footer-push"></div>
+
+        <!-- Site Footer -->
+        <div id="footer">
+            <p>Provided/Maintained by <a href="https://twitter.com/noFungibleNFT">@noFungibleNFT</a>
+            <br>
+            <a href = "mailto: contact@nofungible.cloud">contact@nofungible.cloud</a></p>
+        </div>
+        <script src="/script.js"></script>
+    </body>
+</html>
