@@ -93,8 +93,12 @@
                                     <br><br>
                                     - POST https://ipns.app/api/record
                                     <br>
+                                    {"alias": "NICKNAME_FOR_IPNS_ADDRESS"}
+                                    <br><br>
                                     - PUT https://ipns.app/api/record/:id
                                     <br>
+                                    {"cid": "IPFS_CID"} || {"json": "JSON_STRING"}
+                                    <br><br>
                                     - DELETE https://ipns.app/api/record/:id
                                     <br><br>
                                     <p style="font-size: .9rem; font-style: italic;">* API Keys with the "SELF ONLY" permission have READ + WRITE permissions, but only for IPNS Records that they themselves create.</p>
