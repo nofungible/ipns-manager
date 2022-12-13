@@ -683,7 +683,7 @@ async function deleteIPFSKey(name) {
     return key;
 }
 
-async function publishIPFSName(id, resource, sessionId, {skipCache} = {}) {
+async function publishIPFSName(id, resource/*, sessionId, {skipCache} = {}*/) {
     await Record.update({status: 1}, {where: {id}});
 
     // let cacheTimeout;
@@ -715,7 +715,7 @@ async function publishIPFSName(id, resource, sessionId, {skipCache} = {}) {
         // }
 
         await new Promise((resolve, reject) => {
-            publish(timeout, controller, resolve, reject).then(resolve).catch(reject);
+            publish(resolve, reject).then(resolve).catch(reject);
         });
 
         // if (skipCache !== true) {
@@ -770,7 +770,7 @@ async function publishIPFSName(id, resource, sessionId, {skipCache} = {}) {
     //     resolve();
     // }
 
-    async function publish(timeout, controller, resolve, reject, retries = 1, rid = Date.now()) {
+    async function publish(resolve, reject, retries = 1, rid = Date.now()) {
         if (retries > 3) {
             return reject(Object.assign(new Error('Too many IPNS publish attempts'), {id, resource}));
         }
@@ -801,7 +801,7 @@ async function publishIPFSName(id, resource, sessionId, {skipCache} = {}) {
             const {
                 stdout: out,
                 stderr: err
-            } = await promisify(exec)(`docker exec ipfs-kubo ipfs name publish --key=${encodeURIComponent(id)} ${encodeURIComponent(resource)}`, {signal: controller.signal});
+            } = await promisify(exec)(`docker exec ipfs-kubo ipfs name publish --key=${encodeURIComponent(id)} ${encodeURIComponent(resource)}`, {signal: requestMap[id].controller.signal});
 
             if (requestMap[id] && requestMap[id].rid === rid) {
                 requestMap[id].abortTimeout && clearTimeout(requestMap[id].abortTimeout);
@@ -823,7 +823,7 @@ async function publishIPFSName(id, resource, sessionId, {skipCache} = {}) {
                 }
 
                 return requestMap[id].retryTimeout = setTimeout(() => {
-                    return publish(timeout, controller, resolve, reject, retries + 1, rid);
+                    return publish(resolve, reject, retries + 1, rid);
                 }, retries > 2 ? 10000 : 5000);
             }
     
