@@ -10,7 +10,7 @@ if (!fs.existsSync(dir)){
 
 require('dotenv').config()
 
-const {Account, AccessToken, Cookie, Record, InviteKey, Banned} = require('./src/models');
+const {Account, AccessToken, Cookie, Record, InviteKey, Banned, EnterpriseKey} = require('./src/models');
 
 const KEY_FILE = `${__dirname}/server_key.json`;
 const COOKIE_NAME = 'NO_FUNGIBLE_DNS_SESSION';
@@ -304,9 +304,12 @@ app.post('/api/record', cors(), _async(verifyToken), _async(async (req, res) => 
         return res.send({success: false});
     }
 
-    const recordCount = await Record.count({where: {account: req.session.id}});
+    const [recordCount, enterpriseKey] = await Promise.all([
+        Record.count({where: {account: req.session.id}}),
+        EnterpriseKey.findOne({where: {account: req.session.id}})
+    ]);
 
-    if (recordCount > 5) {
+    if (recordCount > 5 && !enterpriseKey) {
         return res.send({success: false});
     }
 

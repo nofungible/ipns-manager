@@ -3,8 +3,9 @@ const AccessToken = require('./AccessToken');
 const Cookie = require('./Cookie');
 const Record = require('./Record');
 const InviteKey = require('./InviteKey');
-const { Sequelize, DataTypes } = require('sequelize');
 const Banned = require('./Banned');
+const EnterpriseKey = require('./EnterpriseKey');
+const { Sequelize, DataTypes } = require('sequelize');
 
 const sequelize = new Sequelize({
     database: process.env.IPNS_DATABASE,
@@ -20,6 +21,7 @@ Cookie(sequelize);
 Record(sequelize);
 InviteKey(sequelize);
 Banned(sequelize);
+EnterpriseKey(sequelize);
 
 sequelize.models.Account.hasMany(sequelize.models.AccessToken, {
     foreignKey: {
@@ -74,6 +76,20 @@ sequelize.models.Record.belongsTo(sequelize.models.AccessToken, {
     foreignKey: {
         type: DataTypes.UUID,
         name: 'token'
+    }
+});
+
+sequelize.models.Account.hasMany(sequelize.models.EnterpriseKey, {
+    foreignKey: {
+        type: DataTypes.UUID,
+        name: 'account'
+    }
+});
+
+sequelize.models.EnterpriseKey.belongsTo(sequelize.models.Account, {
+    foreignKey: {
+        type: DataTypes.UUID,
+        name: 'account'
     }
 });
 
