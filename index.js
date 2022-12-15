@@ -398,7 +398,10 @@ app.put(
     },
     _async(fetchVerifiedRecord),
     _async(async (req, res) => {
-        let {cid, json} = req.body;
+        let {cid, json, current: currentCid} = req.body;
+
+        cid = encodeURIComponent(cid);
+        currentCid = encodeURIComponent(currentCid);
 
         const fileName = `CID_TEMP_${Date.now()}.json`;
         const fileKey = `${__dirname}/temp/${fileName}`;
@@ -429,13 +432,17 @@ app.put(
 
             // Override CID with JSON file CID
             cid = stdout.trim();
+        } else {
+            if (currentCid && currentCid !== req.verifiedRecord.cid) {
+                return res.send({success: false});
+            }
         }
 
         // Publish name in background.
         (async () => {
             try {
                 // Skip caching CID content when storing raw JSON for user.
-                await publishIPFSName(req.params.id, encodeURIComponent(cid), req.session.id, {skipCache: !!json});
+                await publishIPFSName(req.params.id, cid, req.session.id, {skipCache: !!json});
             } catch (err) {
                 console.error('Failed to publish IPFS record');
 
