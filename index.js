@@ -442,7 +442,7 @@ app.put(
         (async () => {
             try {
                 // Skip caching CID content when storing raw JSON for user.
-                await publishIPFSName(req.params.id, cid, req.session.id, {skipCache: !!json});
+                await publishIPFSName(req.params.id, cid, {skipCache: !!json});
             } catch (err) {
                 console.error('Failed to publish IPFS record');
 
@@ -693,92 +693,94 @@ async function deleteIPFSKey(name) {
     return key;
 }
 
-async function publishIPFSName(id, resource/*, sessionId, {skipCache} = {}*/) {
+async function publishIPFSName(id, resource, {skipCache} = {}) {
     await Record.update({status: 1}, {where: {id}});
 
-    // let cacheTimeout;
+    let cacheTimeout;
     // let timeout;
     // let controller;
 
-    const now = Date.now();
+    // const now = Date.now();
 
     // if (skipCache !== true) {
     //     await promisify(exec)(`touch ${__dirname}/temp/${now}.json`);
     // }
 
     try {
-        // if (skipCache !== true) {
-        //     try {
-        //         // @TODO This probably should go, or be rewritten w/o public gateways. Rate limits can't be bottleneck.
-        //         await new Promise((resolve, reject) => {
-        //             cache(resource, `${__dirname}/temp/${now}.json`, resolve, reject).then(resolve).catch(reject);
-        //         });
-        //     } catch (err) {
-        //         console.error('Pin caching failed', err);
-        //         // try {
-        //         //     await promisify(exec)(`docker exec ipfs-kubo ipfs get ${resource}`);
-        //         // } catch (err) {
-        //         //     console.error('Fallback pin caching failed', err);
-        //         //     resolve();
-        //         // }
-        //     }
-        // }
+        if (skipCache !== true) {
+            try {
+                // @TODO This probably should go, or be rewritten w/o public gateways. Rate limits can't be bottleneck.
+                await new Promise((resolve, reject) => {
+                    cache(resource, resolve, reject).then(resolve).catch(reject);
+                });
+            } catch (err) {
+                console.error('Pin caching failed', err);
+                // try {
+                //     await promisify(exec)(`docker exec ipfs-kubo ipfs get ${resource}`);
+                // } catch (err) {
+                //     console.error('Fallback pin caching failed', err);
+                //     resolve();
+                // }
+            }
+        }
 
         await new Promise((resolve, reject) => {
             publish(resolve, reject).then(resolve).catch(reject);
         });
 
-        // if (skipCache !== true) {
-        //     promisify(exec)(`docker exec ipfs-kubo ipfs pin rm ${resource}`).catch(console.error);
-        //     // promisify(exec)(`rm ${__dirname}/temp/${now}.json`).catch(console.error);
-        // }
+        if (skipCache !== true) {
+            promisify(exec)(`docker exec ipfs-kubo ipfs pin rm ${resource}`).catch(console.error);
+            // promisify(exec)(`rm ${__dirname}/temp/${now}.json`).catch(console.error);
+        }
     } catch (err) {
         console.error(err);
 
         await Record.update({status: 3}, {where: {id}});
     }
 
-    // async function cache(cid, fileName, resolve, reject, retries = 1) {
-    //     cid = encodeURIComponent(cid);
+    async function cache(cid, resolve, reject, retries = 1) {
+        if (retries > 3) {
+            return reject(new Error('TOO_MANY_CACHE_RETRIES'));
+        }
 
-    //     console.log('caching', cid);
+        console.log('caching', cid);
 
-    //     const controller = new AbortController();
+        const controller = new AbortController();
 
-    //     cacheTimeout && clearTimeout(cacheTimeout);
+        cacheTimeout && clearTimeout(cacheTimeout);
 
-    //     cacheTimeout = setTimeout(() => {
-    //         controller.abort();
-    //     }, 10000);
+        cacheTimeout = setTimeout(() => {
+            controller.abort();
+        }, 10000);
 
-    //     try {
-    //         // const {
-    //         //     error
-    //         //     // @TODO Deal with cloudflare not working. We need a better pin fetching solution here even.
-    //         // } = await promisify(exec)(`curl -X GET https://cloudflare-ipfs.com/ipfs/${cid} > ${fileName}`, {signal: controller.signal});
-    //         const {error} = await promisify(exec)(`docker exec ipfs-kubo ipfs pin add ${resource}`, {signal: controller.signal});
+        try {
+            // const {
+            //     error
+            //     // @TODO Deal with cloudflare not working. We need a better pin fetching solution here even.
+            // } = await promisify(exec)(`curl -X GET https://cloudflare-ipfs.com/ipfs/${cid} > ${fileName}`, {signal: controller.signal});
+            const {error} = await promisify(exec)(`docker exec ipfs-kubo ipfs get ${resource}`, {signal: controller.signal});
 
-    //         if (error) {
-    //             return reject(error);
-    //         }
-    //     } catch (err) {
-    //         if (err.name === 'AbortError') {
-    //             return setTimeout(() => {
-    //                 return cache(cid, fileName, resolve, reject, retries + 1);
-    //             }, retries > 2 ? 10000 : 5000);
-    //         }
+            if (error) {
+                return reject(error);
+            }
+        } catch (err) {
+            if (err.name === 'AbortError') {
+                return setTimeout(() => {
+                    return cache(cid, resolve, reject, retries + 1);
+                }, retries > 2 ? 10000 : 5000);
+            }
 
-    //         reject(err);
-    //     }
+            reject(err);
+        }
 
-    //     cacheTimeout && clearTimeout(cacheTimeout);
+        cacheTimeout && clearTimeout(cacheTimeout);
 
-    //     // const internalFile = `/data/temp/${fileName.split('/').slice(-1).pop()}`;
+        // const internalFile = `/data/temp/${fileName.split('/').slice(-1).pop()}`;
 
-    //     // await promisify(exec)(`docker exec ipfs-kubo ipfs add ${internalFile}`);
+        // await promisify(exec)(`docker exec ipfs-kubo ipfs add ${internalFile}`);
 
-    //     resolve();
-    // }
+        resolve();
+    }
 
     async function publish(resolve, reject, retries = 1, rid = Date.now()) {
         if (retries > 3) {
