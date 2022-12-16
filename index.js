@@ -401,7 +401,7 @@ app.put(
         let {cid, json, current: currentCid} = req.body;
 
         cid = encodeURIComponent(cid);
-        currentCid = encodeURIComponent(currentCid);
+        currentCid = currentCid && encodeURIComponent(currentCid);
 
         const fileName = `CID_TEMP_${Date.now()}.json`;
         const fileKey = `${__dirname}/temp/${fileName}`;
