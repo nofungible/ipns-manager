@@ -376,7 +376,7 @@ app.put(
         let {cid, json} = req.body;
 
         if (!cid && !json) {
-            return res.send({success: false});
+            return res.send({success: false, error: 'No Content'});
         }
 
         // Ensure JSON doesn't exceed size limitation, and that it's valid JSON.
@@ -434,7 +434,7 @@ app.put(
             cid = stdout.trim();
         } else {
             if (currentCid && currentCid !== req.verifiedRecord.cid) {
-                return res.send({success: false});
+                return res.send({success: false, error: 'CID Mismatch'});
             }
         }
 
