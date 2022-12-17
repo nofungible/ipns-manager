@@ -801,10 +801,8 @@ async function publishIPFSName(id, resource, {skipCache} = {}) {
             rid,
             controller: new AbortController(),
             abortTimeout: setTimeout(() => {
-                if (requestMap[id] && requestMap[id].rid === rid) {
-                    requestMap[id].controller.abort();
-                }
-            }, retries > 2 ? 10000 : 30000)
+                requestMap[id].controller && requestMap[id].controller.abort();
+            }, 10000)
         };
 
         let stdout, stderr;
@@ -835,6 +833,7 @@ async function publishIPFSName(id, resource, {skipCache} = {}) {
                 }
 
                 return requestMap[id].retryTimeout = setTimeout(() => {
+                    console.log('terminating publish', id);
                     return publish(resolve, reject, retries + 1, rid);
                 }, retries > 2 ? 10000 : 5000);
             }
