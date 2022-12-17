@@ -784,6 +784,9 @@ async function publishIPFSName(id, resource, {skipCache} = {}) {
 
     async function publish(resolve, reject, retries = 1, rid = Date.now()) {
         if (retries > 3) {
+            console.error('too many publish attempts', id);
+            await Record.update({status: 3}, {where: {id}});
+
             return reject(Object.assign(new Error('Too many IPNS publish attempts'), {id, resource}));
         }
 
